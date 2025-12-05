@@ -5,6 +5,7 @@ import { Logger } from './common/logger';
 import { startCrons } from './crons';
 import { startAllConsumers } from './sqs/consumers';
 import { connectDB } from './startup/db';
+import { initConfig } from './startup/aws_secrets';
 
 const PORT = process.env.PORT || 3000;
 const SHOULD_RUN_CONSUMERS = process.env.SHOULD_RUN_CONSUMERS!;
@@ -13,6 +14,7 @@ const SHOULD_RUN_CRONS = process.env.SHOULD_RUN_CRONS!;
 const startServer = async () => {
   try {
     await connectDB();
+    await initConfig();
     const app = buildApp();
     if (SHOULD_RUN_CONSUMERS === 'true') {
       startAllConsumers();
