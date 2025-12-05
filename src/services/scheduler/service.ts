@@ -81,6 +81,7 @@ const handleJob = async (jobId: string): Promise<void> => {
     await HttpClient.post(url, payload, {
       headers: {
         'x-idempotency-key': jobId,
+        job_id: jobId,
       },
     });
     await JobRespository.updateJobStatus(jobId, JobStatus.SUCCESS);
