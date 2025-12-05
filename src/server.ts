@@ -13,8 +13,8 @@ const SHOULD_RUN_CRONS = process.env.SHOULD_RUN_CRONS!;
 
 const startServer = async () => {
   try {
-    await connectDB();
     await initConfig();
+    await connectDB();
     const app = buildApp();
     if (SHOULD_RUN_CONSUMERS === 'true') {
       startAllConsumers();
