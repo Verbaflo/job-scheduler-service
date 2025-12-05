@@ -21,7 +21,7 @@ const validateScheduleJobRequest = (request: ScheduleJobRequest) => {
 
 const validateCancelJobRequest = (request: CancelJobRequest) => {
   const { jobId } = request;
-  if (isEmpty(jobId) || !isValidObjectId(jobId)) {
+  if (isEmpty(jobId)) {
     throw new HttpError(400, 'job id is not valid');
   }
 };
