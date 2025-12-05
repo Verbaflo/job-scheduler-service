@@ -4,7 +4,10 @@ import { HttpError } from '../../common/http_error';
 import { CancelJobRequest, ScheduleJobRequest } from './types';
 
 const validateScheduleJobRequest = (request: ScheduleJobRequest) => {
-  const { url, delayInSeconds } = request;
+  const { url, delayInSeconds, jobId } = request;
+  if (isEmpty(jobId)) {
+    throw new HttpError(400, 'jobId is required');
+  }
   if (isEmpty(url)) {
     throw new HttpError(400, 'url is required');
   }
