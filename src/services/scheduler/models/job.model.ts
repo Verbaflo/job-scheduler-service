@@ -3,6 +3,10 @@ import { Job, JobStatus } from '../types';
 
 const JobSchema = new Schema<Job>(
   {
+    jobId: {
+      type: String,
+      required: true,
+    },
     url: {
       type: String,
       required: true,

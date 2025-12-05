@@ -34,7 +34,7 @@ const scheduleJob = async (
     return moment(callbackTimeStamp).isSameOrBefore(moment(endTimeStamp));
   };
 
-  const { delayInSeconds, url, payload } = request;
+  const { delayInSeconds, url, payload, jobId } = request;
   const callbackTimeStamp = moment().add(delayInSeconds, 'second');
   const createdJob = await JobRespository.createJob({
     url,
@@ -42,9 +42,10 @@ const scheduleJob = async (
     callbackTime: callbackTimeStamp.toDate(),
     status: JobStatus.SCHEDULED,
     retryCount: 0,
+    jobId,
   });
   const latestRun = await JobSchedulerRunDetailsRepository.getLastRunDetails();
-  const { jobId, callbackTime } = createdJob;
+  const { callbackTime } = createdJob;
   if (isJobInBetweenRunningJob()) {
     await JobRespository.updateJobStatus(jobId, JobStatus.IN_PROGRESS);
     enqueueJobWithDelay(jobId, callbackTime);

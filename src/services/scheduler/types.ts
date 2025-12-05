@@ -3,6 +3,7 @@ interface ScheduleJobRequest {
   payload: Object;
   delayInSeconds: number;
   source: string;
+  jobId: string;
 }
 
 enum JobStatus {
@@ -14,6 +15,7 @@ enum JobStatus {
 }
 
 interface Job extends Document {
+  jobId: string;
   url: string;
   payload: object;
   status: JobStatus;

@@ -8,10 +8,11 @@ const createJob = async (job: {
   callbackTime: Date;
   status: string;
   retryCount: number;
+  jobId: string;
 }): Promise<JobDocument> => {
   const createdJobDocument = await JobModel.create(job);
   return {
-    jobId: createdJobDocument._id.toString(),
+    jobId: createdJobDocument.jobId,
     url: createdJobDocument.url,
     status: createdJobDocument.status,
     callbackTime: createdJobDocument.callbackTime,
@@ -20,18 +21,18 @@ const createJob = async (job: {
 };
 
 const findJobById = async (jobId: string): Promise<Job | null> => {
-  return await JobModel.findOne({ _id: jobId });
+  return await JobModel.findOne({ jobId });
 };
 
 const updateJobStatus = async (
   jobId: string,
   status: JobStatus,
 ): Promise<Job | null> => {
-  return JobModel.findOneAndUpdate({ _id: jobId }, { status });
+  return JobModel.findOneAndUpdate({ jobId }, { status });
 };
 
 const updateJobBulk = async (jobIds: string[], status: JobStatus) => {
-  return JobModel.updateMany({ _id: { $in: jobIds } }, { status });
+  return JobModel.updateMany({ jobId: { $in: jobIds } }, { status });
 };
 
 const getScheduledJobBetweenTimeRange = async (
@@ -47,7 +48,7 @@ const getScheduledJobBetweenTimeRange = async (
   }
   return jobs.map((job) => {
     return {
-      jobId: job._id.toString(),
+      jobId: job.jobId,
       status: job.status,
       url: job.url,
       callbackTime: job.callbackTime,
