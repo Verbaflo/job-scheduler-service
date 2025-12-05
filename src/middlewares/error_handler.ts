@@ -8,7 +8,6 @@ export function errorHandler(
   next: NextFunction,
 ) {
   Logger.error({
-    error_message: err.message,
     error_stack: err,
   });
   const status = err.code === 'NOT_FOUND' ? 404 : err.status || 500;
