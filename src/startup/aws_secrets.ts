@@ -13,7 +13,26 @@ async function fetchAwsSecrets(): Promise<void> {
   if (!secretId || !region) {
     return;
   }
-  const client = new SecretsManagerClient({ region });
+  const hasStaticCreds =
+    !!process.env.AWS_ACCESS_KEY_ID && !!process.env.AWS_SECRET_ACCESS_KEY;
+  const client = new SecretsManagerClient({
+    region,
+    ...(hasStaticCreds
+      ? {
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID as string,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY as string,
+          },
+        }
+      : {}),
+  });
+  Logger.info({
+    message: 'fetching aws secrets',
+    key1: 'region',
+    key1_value: region,
+    key2: 'secret_id',
+    key2_value: secretId,
+  });
   const cmd = new GetSecretValueCommand({ SecretId: secretId });
   try {
     const response = await client.send(cmd);
