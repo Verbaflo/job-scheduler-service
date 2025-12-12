@@ -48,8 +48,8 @@ const initializeTracing = async () => {
   } catch (err: any) {
     Logger.error({
       message: '[OTEL] Error initializing tracing',
-      error_message: String(err),
-      error_stack: err instanceof Error ? err.stack : undefined,
+      error_message: err?.message,
+      error_stack: err?.stack,
     });
   }
 };
