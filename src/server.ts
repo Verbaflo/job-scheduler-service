@@ -34,15 +34,15 @@ const startServer = async () => {
         Logger.info({
           message: `Received ${signal}. Gracefully shutting down...`,
         });
-        await shutdownTracing();
         // Stop accepting new connections
         server.close(async () => {
           Logger.info({ message: 'Closed HTTP server.' });
-          // Close Mongo connection
           await mongoose.connection.close();
           Logger.info({ message: 'Disconnected from MongoDB.' });
           await RedisClient.disconnectRedis();
           Logger.info({ message: 'Disconnected from Redis.' });
+          await shutdownTracing();
+          Logger.info({ message: "Disconnected tracing."})
           process.exit(0);
         });
         // Force exit after 10 seconds if shutdown hangs

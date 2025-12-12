@@ -1,4 +1,3 @@
-import { SpanStatusCode, trace } from '@opentelemetry/api';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
@@ -8,7 +7,7 @@ import { Logger } from '../common/logger';
 
 let sdk: NodeSDK | null = null;
 
-export const initializeTracing = async () => {
+const initializeTracing = async () => {
   try {
     if (sdk) {
       return;
@@ -55,7 +54,7 @@ export const initializeTracing = async () => {
   }
 };
 
-export const shutdownTracing = async () => {
+const shutdownTracing = async () => {
   if (!sdk) return;
   try {
     await sdk.shutdown();
@@ -71,35 +70,4 @@ export const shutdownTracing = async () => {
   }
 };
 
-export const getTracer = () => {
-  return trace.getTracer('job-scheduler-service');
-};
-
-export async function withSpan<T>(
-  name: string,
-  fn: (span: import('@opentelemetry/api').Span) => Promise<T> | T,
-  attributes?: Record<string, string | number | boolean>,
-): Promise<T> {
-  const tracer = getTracer();
-  return await tracer.startActiveSpan(name, async (span) => {
-    try {
-      if (attributes) {
-        span.setAttributes(attributes);
-      }
-      const result = await fn(span);
-      span.setStatus({ code: SpanStatusCode.OK });
-      return result;
-    } catch (error: any) {
-      span.recordException(error);
-      span.setStatus({
-        code: SpanStatusCode.ERROR,
-        message: error?.message || String(error),
-      });
-      throw error;
-    } finally {
-      span.end();
-    }
-  });
-}
-
-export { sdk };
+export { initializeTracing, shutdownTracing };
