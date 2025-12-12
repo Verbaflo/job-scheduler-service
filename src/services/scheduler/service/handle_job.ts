@@ -27,6 +27,8 @@ const handleJob = async (jobId: string, version: number): Promise<void> => {
       num_key1_value: version,
       num_key2: 'current version',
       num_key3_value: currentVersion,
+      key1: 'jobId',
+      key1_value: jobId,
     });
     return;
   }
