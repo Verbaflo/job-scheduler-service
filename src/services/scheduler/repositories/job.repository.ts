@@ -2,7 +2,18 @@ import { isEmpty } from 'lodash';
 import { JobModel } from '../models/job.model';
 import { Job, JobDocument, JobStatus } from '../types';
 
-const createJob = async (job: {
+const buildJobDocument = (job: any): JobDocument => {
+  return {
+    jobId: job.jobId,
+    url: job.url,
+    status: job.status,
+    callbackTime: job.callbackTime,
+    payload: job.payload,
+    version: job.version,
+  };
+};
+
+const createOrUpdateJob = async (job: {
   url: string;
   payload: object;
   callbackTime: Date;
@@ -10,29 +21,36 @@ const createJob = async (job: {
   retryCount: number;
   jobId: string;
 }): Promise<JobDocument> => {
-  const createdJobDocument = await JobModel.create(job);
-  return {
-    jobId: createdJobDocument.jobId,
-    url: createdJobDocument.url,
-    status: createdJobDocument.status,
-    callbackTime: createdJobDocument.callbackTime,
-    payload: createdJobDocument.payload,
-  };
+  const createdJobDocument = await JobModel.findOneAndUpdate(
+    { jobId: job.jobId },
+    { $set: job, $inc: { version: 1 } },
+    {
+      upsert: true,
+      new: true,
+      runValidators: true,
+      setDefaultsOnInsert: true,
+    },
+  );
+  return buildJobDocument(job);
 };
 
-const findJobById = async (jobId: string): Promise<Job | null> => {
-  return await JobModel.findOne({ jobId });
+const findJobById = async (jobId: string): Promise<JobDocument | undefined> => {
+  const job = await JobModel.findOne({ jobId });
+  if (isEmpty(job)) {
+    return undefined;
+  }
+  return buildJobDocument(job);
 };
 
 const updateJobStatus = async (
   jobId: string,
   status: JobStatus,
 ): Promise<Job | null> => {
-  return JobModel.findOneAndUpdate({ jobId }, { status });
+  return JobModel.findOneAndUpdate({ jobId }, { $set: { status } });
 };
 
 const updateJobBulk = async (jobIds: string[], status: JobStatus) => {
-  return JobModel.updateMany({ jobId: { $in: jobIds } }, { status });
+  return JobModel.updateMany({ jobId: { $in: jobIds } }, { $set: { status } });
 };
 
 const getScheduledJobBetweenTimeRange = async (
@@ -46,19 +64,11 @@ const getScheduledJobBetweenTimeRange = async (
   if (isEmpty(jobs)) {
     return [];
   }
-  return jobs.map((job) => {
-    return {
-      jobId: job.jobId,
-      status: job.status,
-      url: job.url,
-      callbackTime: job.callbackTime,
-      payload: job.payload,
-    };
-  });
+  return jobs.map((job) => buildJobDocument(job));
 };
 
 export const JobRespository = {
-  createJob,
+  createOrUpdateJob,
   findJobById,
   updateJobStatus,
   getScheduledJobBetweenTimeRange,

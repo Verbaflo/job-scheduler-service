@@ -1,6 +1,5 @@
 import { isEmpty, isNil } from 'lodash';
-import { isValidObjectId } from 'mongoose';
-import { HttpError } from '../../common/http_error';
+import { HttpError } from '../../common/errors/http_error';
 import { CancelJobRequest, ScheduleJobRequest } from './types';
 
 const validateScheduleJobRequest = (request: ScheduleJobRequest) => {

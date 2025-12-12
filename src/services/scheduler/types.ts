@@ -20,6 +20,7 @@ interface Job extends Document {
   payload: object;
   status: JobStatus;
   callbackTime: Date;
+  version: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,6 +31,7 @@ interface JobDocument {
   status: JobStatus;
   callbackTime: Date;
   payload: object;
+  version: number;
 }
 
 enum JobSchedulerRunStatus {
