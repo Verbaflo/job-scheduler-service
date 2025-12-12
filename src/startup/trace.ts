@@ -41,7 +41,7 @@ const initializeTracing = async () => {
         new HttpInstrumentation(),
       ],
     });
-    sdk.start();
+    await sdk.start();
     Logger.info({
       message: `[OTEL] Tracing initialized for ${SERVICE_NAME} v${SERVICE_VERSION}`,
     });
