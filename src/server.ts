@@ -7,6 +7,7 @@ import { RedisClient } from './infra';
 import { startAllConsumers } from './sqs/consumers';
 import { initConfig } from './startup/aws_secrets';
 import { connectDB } from './startup/db';
+import { initializeTracing, shutdownTracing } from './startup/trace';
 
 const PORT = process.env.PORT || 3000;
 const SHOULD_RUN_CONSUMERS = process.env.SHOULD_RUN_CONSUMERS!;
@@ -15,6 +16,7 @@ const SHOULD_RUN_CRONS = process.env.SHOULD_RUN_CRONS!;
 const startServer = async () => {
   try {
     await initConfig();
+    await initializeTracing();
     await connectDB();
     await RedisClient.connectRedis();
     const app = buildApp();
@@ -35,11 +37,12 @@ const startServer = async () => {
         // Stop accepting new connections
         server.close(async () => {
           Logger.info({ message: 'Closed HTTP server.' });
-          // Close Mongo connection
           await mongoose.connection.close();
           Logger.info({ message: 'Disconnected from MongoDB.' });
           await RedisClient.disconnectRedis();
           Logger.info({ message: 'Disconnected from Redis.' });
+          await shutdownTracing();
+          Logger.info({ message: "Disconnected tracing."})
           process.exit(0);
         });
         // Force exit after 10 seconds if shutdown hangs
