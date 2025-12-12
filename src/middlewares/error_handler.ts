@@ -1,20 +1,29 @@
 import { NextFunction, Request, Response } from 'express';
+import { AppError } from '../common/app_error';
 import { Logger } from '../common/logger';
 
-export function errorHandler(
+const errorHandler = (
   err: any,
-  request: Request,
-  response: Response,
-  next: NextFunction,
-) {
+  _req: Request,
+  res: Response,
+  _next: NextFunction,
+) => {
+  const appErr: AppError =
+    err instanceof AppError
+      ? err
+      : new AppError({ message: err?.message || 'Internal Server Error' });
   Logger.error({
-    error_stack: err,
+    message: 'Request failed',
+    error_stack: err?.stack,
+    status_code: appErr.status,
   });
-  const status = err.code === 'NOT_FOUND' ? 404 : err.status || 500;
-  response.status(status).json({
+  res.status(appErr.status).json({
     error: {
-      message: err.message || 'Internal Server Error',
-      code: err.code || 'INTERNAL',
+      message: appErr.message,
+      code: appErr.code,
+      details: appErr.details,
     },
   });
-}
+};
+
+export { errorHandler };

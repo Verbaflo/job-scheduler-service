@@ -23,9 +23,14 @@ const JobSchema = new Schema<Job>(
       type: Date,
       required: true,
     },
+    version: {
+      type: Number,
+      reqquired: true,
+    },
   },
   {
     timestamps: true,
+    versionKey: 'version',
   },
 );
 

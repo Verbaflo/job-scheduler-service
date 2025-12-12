@@ -3,9 +3,10 @@ import mongoose from 'mongoose';
 import { buildApp } from './app';
 import { Logger } from './common/logger';
 import { startCrons } from './crons';
+import { RedisClient } from './infra';
 import { startAllConsumers } from './sqs/consumers';
-import { connectDB } from './startup/db';
 import { initConfig } from './startup/aws_secrets';
+import { connectDB } from './startup/db';
 
 const PORT = process.env.PORT || 3000;
 const SHOULD_RUN_CONSUMERS = process.env.SHOULD_RUN_CONSUMERS!;
@@ -15,6 +16,7 @@ const startServer = async () => {
   try {
     await initConfig();
     await connectDB();
+    await RedisClient.connectRedis();
     const app = buildApp();
     if (SHOULD_RUN_CONSUMERS === 'true') {
       startAllConsumers();
@@ -36,6 +38,8 @@ const startServer = async () => {
           // Close Mongo connection
           await mongoose.connection.close();
           Logger.info({ message: 'Disconnected from MongoDB.' });
+          await RedisClient.disconnectRedis();
+          Logger.info({ message: 'Disconnected from Redis.' });
           process.exit(0);
         });
         // Force exit after 10 seconds if shutdown hangs
