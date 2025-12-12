@@ -6,7 +6,7 @@ import { startCrons } from './crons';
 import { startAllConsumers } from './sqs/consumers';
 import { connectDB } from './startup/db';
 import { initConfig } from './startup/aws_secrets';
-import { initializeTracing, shutdownTracing } from './trace';
+import { initializeTracing, shutdownTracing } from './startup/trace';
 
 const PORT = process.env.PORT || 3000;
 const SHOULD_RUN_CONSUMERS = process.env.SHOULD_RUN_CONSUMERS!;
