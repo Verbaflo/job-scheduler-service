@@ -6,6 +6,7 @@ import { errorHandler } from './middlewares/error_handler';
 import { notFound } from './middlewares/not_found';
 import { RequestContext } from './middlewares/request_context';
 import { requestLogger } from './middlewares/request_logger';
+import { otelRequestEnricher } from './middlewares/otel_enricher';
 import { setupRoutes } from './startup/routes';
 
 export function buildApp() {
@@ -13,6 +14,7 @@ export function buildApp() {
   app.use(RequestContext.middleware);
   app.use(cors());
   app.use(express.json());
+  app.use(otelRequestEnricher);
   app.use(
     morgan('tiny', {
       stream: {
