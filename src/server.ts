@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
-import { buildApp } from './app';
+import { initializeTracing, shutdownTracing } from './startup/trace';
 import { Logger } from './common/logger';
 import { startCrons } from './crons';
 import { RedisClient } from './infra';
@@ -15,8 +15,10 @@ const SHOULD_RUN_CRONS = process.env.SHOULD_RUN_CRONS!;
 const startServer = async () => {
   try {
     await initConfig();
+    await initializeTracing();
     await connectDB();
     await RedisClient.connectRedis();
+    const { buildApp } = await import('./app');
     const app = buildApp();
     if (SHOULD_RUN_CONSUMERS === 'true') {
       startAllConsumers();
@@ -35,11 +37,12 @@ const startServer = async () => {
         // Stop accepting new connections
         server.close(async () => {
           Logger.info({ message: 'Closed HTTP server.' });
-          // Close Mongo connection
           await mongoose.connection.close();
           Logger.info({ message: 'Disconnected from MongoDB.' });
           await RedisClient.disconnectRedis();
           Logger.info({ message: 'Disconnected from Redis.' });
+          await shutdownTracing();
+          Logger.info({ message: "Disconnected tracing." })
           process.exit(0);
         });
         // Force exit after 10 seconds if shutdown hangs
