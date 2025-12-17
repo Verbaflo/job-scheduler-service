@@ -9,7 +9,7 @@ WORKDIR /app
 # Install dependencies (full, including dev) for building
 COPY .env ./
 COPY package.json  ./
-RUN npm ci --prefer-offline --no-audit --no-fund
+RUN npm install
 
 # Copy source and build
 COPY tsconfig.json ./
