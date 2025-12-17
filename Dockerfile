@@ -8,7 +8,7 @@ WORKDIR /app
 
 # Install dependencies (full, including dev) for building
 COPY .env ./
-COPY package.json package-lock.json ./
+COPY package.json  ./
 RUN npm ci --prefer-offline --no-audit --no-fund
 
 # Copy source and build
