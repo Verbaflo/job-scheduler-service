@@ -13,7 +13,9 @@ const REDACT = new Set([
 
 function sanitizeObject(input: unknown): unknown {
   if (!input || typeof input !== 'object') return input;
-  const copy: any = Array.isArray(input) ? [...(input as any[])] : { ...(input as Record<string, any>) };
+  const copy: any = Array.isArray(input)
+    ? [...(input as any[])]
+    : { ...(input as Record<string, any>) };
   for (const key of Object.keys(copy)) {
     const lower = key.toLowerCase();
     if (REDACT.has(lower)) {
@@ -39,7 +41,11 @@ function safeStringify(value: unknown, maxLen = 4000): string {
   }
 }
 
-export function otelRequestEnricher(req: Request, _res: Response, next: NextFunction) {
+export function otelRequestEnricher(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) {
   // Avoid noisy health checks
   if (req.path === '/health') return next();
 
@@ -51,7 +57,8 @@ export function otelRequestEnricher(req: Request, _res: Response, next: NextFunc
     // Collect parameters
     const params = sanitizeObject(req.params);
     const query = sanitizeObject(req.query);
-    const shouldIncludeBody = method === 'POST' || method === 'PUT' || method === 'PATCH';
+    const shouldIncludeBody =
+      method === 'POST' || method === 'PUT' || method === 'PATCH';
     const body = shouldIncludeBody ? sanitizeObject(req.body) : undefined;
 
     // Attach attributes visible in Jaeger
@@ -68,4 +75,3 @@ export function otelRequestEnricher(req: Request, _res: Response, next: NextFunc
   }
   next();
 }
-
