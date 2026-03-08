@@ -1,6 +1,6 @@
 import { isEmpty } from 'lodash';
 import { Logger } from '../../../common/logger';
-import { JobRespository } from '../repositories/job.repository';
+import { JobRepository } from '../repositories/job.repository';
 import { CancelJobRequest, CancelJobResponse, JobStatus } from '../types';
 
 const cancelJob = async (
@@ -11,7 +11,7 @@ const cancelJob = async (
   };
 
   const { jobId } = request;
-  const job = await JobRespository.findJobById(jobId);
+  const job = await JobRepository.findJobById(jobId);
   if (isEmpty(job)) {
     Logger.error({
       message: 'no job found',
@@ -37,7 +37,7 @@ const cancelJob = async (
     });
     return buildResponse(false);
   }
-  await JobRespository.updateJobStatus(jobId, JobStatus.CANCELLED);
+  await JobRepository.updateJobStatus(jobId, JobStatus.CANCELLED);
   return {
     success: true,
   };
