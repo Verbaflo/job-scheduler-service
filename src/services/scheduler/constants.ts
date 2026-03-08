@@ -1,10 +1,14 @@
-const THRESHOLD_SECONDS = 60; // in case you are chaning this, change the cron time too.
+const THRESHOLD_SECONDS = 60; // in case you are changing this, change the cron time too.
 
 const LOCK_TTL_IN_SECONDS = 10;
 
 const SCHEDULE_JOB_MAX_RETRIES = 3;
+
 const SCHEDULE_JOB_BASE_DELAY_MS = 500;
+
 const SCHEDULE_JOB_MAX_JITTER_MS = 150;
+
+const EXTERNAL_SERVICE_TIMEOUT_IN_SECONDS = 10;
 
 export {
   THRESHOLD_SECONDS,
@@ -12,4 +16,5 @@ export {
   SCHEDULE_JOB_MAX_RETRIES,
   SCHEDULE_JOB_BASE_DELAY_MS,
   SCHEDULE_JOB_MAX_JITTER_MS,
+  EXTERNAL_SERVICE_TIMEOUT_IN_SECONDS,
 };
