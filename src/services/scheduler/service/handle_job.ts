@@ -1,7 +1,7 @@
 import { isEmpty } from 'lodash';
 import { HttpClient } from '../../../common/http_client';
 import { Logger } from '../../../common/logger';
-import { JobRespository } from '../repositories/job.repository';
+import { JobRepository } from '../repositories/job.repository';
 import { JobStatus } from '../types';
 
 const handleJob = async (jobId: string, version: number): Promise<void> => {
@@ -10,7 +10,7 @@ const handleJob = async (jobId: string, version: number): Promise<void> => {
     key1: 'job',
     key1_value: jobId,
   });
-  const jobDetails = await JobRespository.findJobById(jobId);
+  const jobDetails = await JobRepository.findJobById(jobId);
   if (isEmpty(jobDetails)) {
     Logger.error({
       key1: 'jobId',
@@ -46,8 +46,9 @@ const handleJob = async (jobId: string, version: number): Promise<void> => {
         'x-idempotency-key': jobId,
         job_id: jobId,
       },
+      timeout: EX
     });
-    await JobRespository.updateJobStatus(jobId, JobStatus.SUCCESS);
+    await JobRepository.updateJobStatus(jobId, JobStatus.SUCCESS);
   } catch (err: any) {
     Logger.error({
       message: 'failed to complete job',
@@ -55,7 +56,7 @@ const handleJob = async (jobId: string, version: number): Promise<void> => {
       key1_value: jobId,
       error_message: err.message,
     });
-    await JobRespository.updateJobStatus(jobId, JobStatus.FAILED);
+    await JobRepository.updateJobStatus(jobId, JobStatus.FAILED);
   }
 };
 
