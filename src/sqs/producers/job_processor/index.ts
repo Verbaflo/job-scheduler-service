@@ -3,7 +3,7 @@ import { Logger } from '../../../common/logger';
 import { SqsClient } from '../../sqsClient';
 import { JobProcessorInput } from '../../types';
 
-export const enqueueJob = async (
+const enqueueJob = async (
   payload: JobProcessorInput,
   delaySeconds: number = 0,
 ) => {
@@ -31,3 +31,5 @@ export const enqueueJob = async (
     throw err;
   }
 };
+
+export { enqueueJob };
