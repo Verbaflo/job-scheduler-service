@@ -25,7 +25,7 @@ No test suite exists yet (`npm test` is a no-op).
 
 1. **Schedule**: `POST /api/v1/scheduler/schedule` → validates request → acquires Redis lock on jobId → upserts job in MongoDB (status: `scheduled`) → if job falls within an active cron run window, immediately enqueues to SQS
 2. **Cron trigger** (`triggerCallbacks`): Runs every minute via `node-cron`. Queries MongoDB for all `scheduled` jobs with `callbackTime` between last completed run and now + threshold. Marks them `inProgress`, enqueues each to SQS with calculated delay
-3. **SQS consumer** (`handleJob`): Receives job from SQS → validates version matches (prevents stale processing) → POSTs to the job's callback `url` with `payload` → marks job `success` or `failed`
+3. **SQS consumer** (`handleJob`): Receives job from SQS → validates version → POSTs to callback → marks success/failed. Infrastructure errors (DB/Redis) trigger 3 retries with exponential backoff; HTTP callback failures (already retried 3× by axios-retry) mark the job as failed without consumer-level retry. Messages that exhaust retries are left for SQS redelivery → DLQ
 4. **Cancel**: `POST /api/v1/scheduler/cancel` → marks job as `cancelled`; consumer skips cancelled jobs
 
 ### Key Design Patterns
@@ -34,6 +34,8 @@ No test suite exists yet (`npm test` is a no-op).
 - **Distributed locking**: Redis SET NX used to prevent concurrent schedule/cancel on the same jobId
 - **Run tracking**: `job_scheduler_run_details` collection tracks cron run windows (start/end timestamps) to ensure no jobs are missed between runs
 - **SQS delay**: Jobs are enqueued with `DelaySeconds` calculated from `callbackTime - now`, so SQS delivers them close to the intended callback time
+- **SQS consumer retry & DLQ**: Consumer retries infrastructure errors (DB, Redis, AWS SDK) 3× with exponential backoff + jitter via `retryWithBackoff` from `src/common/retry_utils.ts`. HTTP callback failures are NOT retried at consumer level (already retried 3× by axios-retry in `HttpClient`). After exhausting app-level retries, the message is left in SQS for redelivery; the SQS redrive policy moves it to DLQ after `maxReceiveCount` receives
+- **Error classification**: `isRetryableError()` in `src/common/retry_utils.ts` classifies errors as retryable (infrastructure: Mongo, Redis, network) or non-retryable (application: AppError subclasses, AxiosError). Used by both `scheduleJob` and the SQS consumer
 
 ### Source Layout
 
@@ -51,7 +53,7 @@ src/
 │   ├── producers/         # SQS message senders
 │   └── consumers/         # SQS message handlers (sqs-consumer library)
 ├── crons/                 # node-cron scheduled tasks
-├── common/                # Logger (Pino), HttpClient (axios + retry), LockUtils, errors
+├── common/                # Logger (Pino), HttpClient (axios + retry), LockUtils, RetryUtils, errors
 ├── infra/                 # Redis client and service
 ├── middlewares/            # Error handler, request context (AsyncLocalStorage), OTel enricher
 └── startup/               # DB connection, AWS secrets, tracing, route registration
@@ -89,7 +91,7 @@ Key env vars (loaded from `.env`, optionally overlaid from AWS Secrets Manager w
 
 **No magic values**: never inline magic numbers/strings — extract to named constants in `constants.ts`, class-level constants, or enums
 
-**Error handling**: controller catches service exceptions → Express error middleware. Services never swallow silently (log + re-throw). Use specific error classes, not bare `catch (err: any)` without re-throw. Always log before re-throwing so every error is observable
+**Error handling**: controller catches service exceptions → Express error middleware. Services never swallow silently (log + re-throw). Use specific error classes, not bare `catch (err: any)` without re-throw. Always log before re-throwing so every error is observable. SQS consumers must distinguish retryable (infrastructure) from non-retryable (application/HTTP) errors — use `retryWithBackoff` from `src/common/retry_utils.ts` for retryable errors, delete messages immediately for non-retryable. After exhausting retries, leave the message for SQS redelivery → DLQ. Service functions called by SQS consumers must let infrastructure errors propagate (not swallow in catch-all blocks); only catch domain-specific errors (e.g., HTTP callback failures → mark job as FAILED). Always `await` async calls in message handlers — missing `await` silently drops errors
 
 **Logging**: use `Logger` from `src/common/logger.ts` with structured format. Never use `console.log`
 

@@ -1,8 +1,7 @@
 import { isEmpty } from 'lodash';
 import moment, { Moment } from 'moment';
-import { AppError } from '../../../common/app_error';
 import { LockUtils } from '../../../common/lock_utils';
-import { Logger } from '../../../common/logger';
+import { retryWithBackoff } from '../../../common/retry_utils';
 import { enqueueJob } from '../../../sqs/producers/job_processor';
 import {
   LOCK_TTL_IN_SECONDS,
@@ -19,19 +18,6 @@ import {
   ScheduleJobRequest,
   ScheduleJobResponse,
 } from '../types';
-
-const sleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms));
-
-const calculateBackoffDelay = (attempt: number): number => {
-  const baseDelay = Math.min(SCHEDULE_JOB_BASE_DELAY_MS * 2 ** attempt, 2000);
-  const jitter = Math.floor(Math.random() * SCHEDULE_JOB_MAX_JITTER_MS);
-  return baseDelay + jitter;
-};
-
-const isNonRetryableError = (err: unknown): boolean => {
-  return err instanceof AppError;
-};
 
 const enqueueJobWithDelay = async (
   jobId: string,
@@ -61,9 +47,8 @@ const scheduleJob = async (
   const { delayInSeconds, url, payload, jobId } = request;
   await LockUtils.acquireLock(jobId, LOCK_TTL_IN_SECONDS);
   try {
-    let lastError: unknown;
-    for (let attempt = 0; attempt <= SCHEDULE_JOB_MAX_RETRIES; attempt++) {
-      try {
+    return await retryWithBackoff(
+      async () => {
         const callbackTimeStamp = moment().add(delayInSeconds, 'second');
         const createdJob = await JobRepository.createOrUpdateJob({
           url,
@@ -88,50 +73,15 @@ const scheduleJob = async (
           await enqueueJobWithDelay(jobId, version, callbackTime);
         }
         return createdJob;
-      } catch (err) {
-        if (isNonRetryableError(err)) {
-          const appErr = err as AppError;
-          Logger.error({
-            message: 'scheduleJob failed with non-retryable error',
-            key1: 'jobId',
-            key1_value: jobId,
-            key2: 'errorCode',
-            key2_value: appErr.code,
-            error_message: appErr.message,
-            error_stack: appErr.stack,
-          });
-          throw err;
-        }
-        lastError = err;
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        if (attempt < SCHEDULE_JOB_MAX_RETRIES) {
-          const delay = calculateBackoffDelay(attempt);
-          Logger.warning({
-            message: 'scheduleJob retrying after infrastructure error',
-            key1: 'jobId',
-            key1_value: jobId,
-            key2: 'attempt',
-            key2_value: String(attempt + 1),
-            key3: 'delayMs',
-            key3_value: String(delay),
-            error_message: errorMessage,
-          });
-          await sleep(delay);
-        }
-      }
-    }
-    const finalErrorMessage =
-      lastError instanceof Error ? lastError.message : String(lastError);
-    Logger.error({
-      message: 'scheduleJob failed after exhausting all retries',
-      key1: 'jobId',
-      key1_value: jobId,
-      key2: 'maxRetries',
-      key2_value: String(SCHEDULE_JOB_MAX_RETRIES),
-      error_message: finalErrorMessage,
-      error_stack: lastError instanceof Error ? lastError.stack : undefined,
-    });
-    throw lastError;
+      },
+      {
+        maxRetries: SCHEDULE_JOB_MAX_RETRIES,
+        baseDelayMs: SCHEDULE_JOB_BASE_DELAY_MS,
+        maxJitterMs: SCHEDULE_JOB_MAX_JITTER_MS,
+        operationName: 'scheduleJob',
+        context: { jobId },
+      },
+    );
   } finally {
     await LockUtils.releaseLock(jobId);
   }
