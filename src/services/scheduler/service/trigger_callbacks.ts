@@ -5,7 +5,7 @@ import { enqueueJob } from '../../../sqs/producers/job_processor';
 import { THRESHOLD_SECONDS } from '../constants';
 import { JobRepository } from '../repositories/job.repository';
 import { JobSchedulerRunDetailsRepository } from '../repositories/job_run_details.repository';
-import { JobSchedulerRunStatus, JobStatus } from '../types';
+import { JobDocument, JobSchedulerRunStatus, JobStatus } from '../types';
 
 const enqueueJobWithDelay = async (
   jobId: string,
@@ -19,7 +19,33 @@ const enqueueJobWithDelay = async (
   await enqueueJob({ jobId, version }, delaySeconds);
 };
 
-const triggerCallbacks = async () => {
+const enqueueJobsAndLogFailures = async (
+  jobs: JobDocument[],
+): Promise<void> => {
+  const results = await Promise.allSettled(
+    jobs.map((job) =>
+      enqueueJobWithDelay(job.jobId, job.version, job.callbackTime),
+    ),
+  );
+  const failedJobIds = results
+    .map((result, index) => ({
+      status: result.status,
+      jobId: jobs[index].jobId,
+    }))
+    .filter((entry) => entry.status === 'rejected')
+    .map((entry) => entry.jobId);
+  if (failedJobIds.length > 0) {
+    Logger.error({
+      message: 'Some jobs failed to enqueue to SQS',
+      num_key1: 'failedCount',
+      num_key1_value: failedJobIds.length,
+      key1: 'failedJobIds',
+      key1_value: JSON.stringify(failedJobIds),
+    });
+  }
+};
+
+const triggerCallbacks = async (): Promise<void> => {
   const getLastCompletedJobTime = (): Date => {
     if (isEmpty(lastCompletedRunDetails)) {
       return moment('2025-10-07').toDate();
@@ -52,23 +78,7 @@ const triggerCallbacks = async () => {
       JobStatus.IN_PROGRESS,
     ),
   ]);
-  const enqueueResults = await Promise.allSettled(
-    jobsBetweenRange.map((job) =>
-      enqueueJobWithDelay(job.jobId, job.version, job.callbackTime),
-    ),
-  );
-  const failedEnqueues = enqueueResults
-    .map((result, index) => ({ result, jobId: jobsBetweenRange[index].jobId }))
-    .filter((entry) => entry.result.status === 'rejected');
-  if (failedEnqueues.length > 0) {
-    Logger.error({
-      message: 'Some jobs failed to enqueue to SQS',
-      num_key1: 'failedCount',
-      num_key1_value: failedEnqueues.length,
-      key1: 'failedJobIds',
-      key1_value: JSON.stringify(failedEnqueues.map((entry) => entry.jobId)),
-    });
-  }
+  await enqueueJobsAndLogFailures(jobsBetweenRange);
   await JobSchedulerRunDetailsRepository.updateRunStatus(
     startTime,
     JobSchedulerRunStatus.COMPLETED,
