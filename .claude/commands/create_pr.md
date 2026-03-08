@@ -15,12 +15,15 @@ Steps:
 2. **Check for uncommitted changes**
    Run `git status` — if uncommitted changes exist, ask the user whether to commit them first.
 
-3. **Identify the source branch and commits**
+3. **Verify the build passes**
+   Run `npm run build` (or the project's build command) and ensure it succeeds with zero errors. If the build fails, fix the issues before proceeding. Do NOT create PRs with a broken build.
+
+4. **Identify the source branch and commits**
    - Determine the current branch and which upstream branch it tracks (e.g., `origin/main`, `origin/testing`).
    - Identify the commits on this branch that are not yet on the tracked upstream: `git log origin/<tracked-branch>..HEAD --oneline`.
    - These are the commits that need to be PRed.
 
-4. **Check for existing PRs and branches**
+5. **Check for existing PRs and branches**
    For each target branch, determine the expected head branch name:
    - For the tracked upstream: the current branch name itself (e.g., `feature/foo`)
    - For other targets: `<current-branch>-<target-suffix>` (e.g., `feature/foo-testing`, `feature/foo-preprod`)
@@ -30,14 +33,14 @@ Steps:
 
    Record which targets have existing PRs (to **update**) vs. which need new PRs (to **create**).
 
-5. **Process the tracked upstream branch**
+6. **Process the tracked upstream branch**
    - Push the current branch to origin with `-u` flag.
    - **If no open PR exists**: create a PR using `gh pr create --base <tracked-branch>`.
    - **If an open PR exists**: skip PR creation — the push already updated it. Log the existing PR URL.
 
-6. **For each remaining target branch**, do steps 7–10:
+7. **For each remaining target branch**, do steps 8–11:
 
-7. **Prepare the cherry-pick branch**
+8. **Prepare the cherry-pick branch**
    - **If the branch already exists** (check `git branch -r --list 'origin/<branch>'`):
      - `git checkout <branch>` (or `git checkout -b <branch> origin/<branch>` if only remote exists).
      - `git pull origin <branch>` to ensure it's up to date.
@@ -46,7 +49,7 @@ Steps:
      - `git checkout -b <branch> origin/<target-branch>` to create it fresh.
      - All commits from step 3 need to be cherry-picked.
 
-8. **Cherry-pick the commits**
+9. **Cherry-pick the commits**
    - Cherry-pick the identified commits (new ones only if updating) onto this branch: `git cherry-pick <sha1> <sha2> ...`
    - If there are no new commits to cherry-pick (branch is already up to date), skip to step 9.
    - If cherry-pick conflicts occur:
@@ -54,12 +57,13 @@ Steps:
      - For ambiguous conflicts (both sides modified the same logic, semantic disagreements), **stop and ask the user** how to resolve. Do NOT guess or assume.
      - If conflicts cannot be resolved, abort the cherry-pick, inform the user, and skip this target. Continue with remaining branches.
 
-9. **Push and create/update the PR**
-   - Push the branch to origin with `-u` flag.
-   - **If no open PR exists**: create a PR using `gh pr create --base <target-branch>`.
-   - **If an open PR already exists**: skip PR creation — the push already updated it. Log the existing PR URL.
+10. **Push and create/update the PR**
 
-10. **PR title and body** (only when creating a new PR)
+- Push the branch to origin with `-u` flag.
+- **If no open PR exists**: create a PR using `gh pr create --base <target-branch>`.
+- **If an open PR already exists**: skip PR creation — the push already updated it. Log the existing PR URL.
+
+11. **PR title and body** (only when creating a new PR)
     - **Title**: Keep under 70 characters. Prefix with the target environment:
       - `[testing]` for the testing branch
       - `[preprod]` for the preproduction branch
@@ -67,15 +71,15 @@ Steps:
       - Example: `[testing] Add user authentication flow`
     - **Body**: Write a summary section with bullet points covering the cherry-picked commits. Add a test plan section. If cherry-pick required conflict resolution, note what was resolved in the body.
 
-11. **Verify content parity across all PR branches**
+12. **Verify content parity across all PR branches**
     For each changed file, diff the file content across all successfully created PR branches to confirm they are identical:
     `diff <(git show <branch-1>:<file>) <(git show <branch-2>:<file>)`
     If any files differ, flag it to the user before proceeding.
 
-12. **Return to original branch**
+13. **Return to original branch**
     After processing all targets, switch back to the original branch.
 
-13. **Summary**
+14. **Summary**
     Return a summary listing:
     - PR URLs for each target, marked as **Created** or **Updated**
     - Content parity verification result (all identical, or list discrepancies)
