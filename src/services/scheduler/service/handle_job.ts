@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { HttpClient } from '../../../common/http_client';
 import { Logger } from '../../../common/logger';
@@ -51,13 +52,25 @@ const handleJob = async (jobId: string, version: number): Promise<void> => {
     });
     await JobRepository.updateJobStatus(jobId, JobStatus.SUCCESS);
   } catch (err: any) {
+    if (isAxiosError(err)) {
+      Logger.error({
+        message: 'HTTP callback failed after axios retries',
+        key1: 'jobId',
+        key1_value: jobId,
+        key2: 'url',
+        key2_value: url,
+        error_message: err.message,
+      });
+      await JobRepository.updateJobStatus(jobId, JobStatus.FAILED);
+      return;
+    }
     Logger.error({
-      message: 'failed to complete job',
-      key1: 'job',
+      message: 'infrastructure error during job processing',
+      key1: 'jobId',
       key1_value: jobId,
       error_message: err.message,
     });
-    await JobRepository.updateJobStatus(jobId, JobStatus.FAILED);
+    throw err;
   }
 };
 
