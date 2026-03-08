@@ -2,6 +2,31 @@ import { isAxiosError } from 'axios';
 import { AppError } from './app_error';
 import { Logger } from './logger';
 
+const MAX_BACKOFF_CAP_MS = 2000;
+
+const MONGO_ERROR_NAMES = [
+  'MongoNetworkError',
+  'MongoServerError',
+  'MongoTimeoutError',
+  'MongoNetworkTimeoutError',
+  'MongoWriteConcernError',
+];
+
+const NETWORK_ERROR_CODES = [
+  'ECONNREFUSED',
+  'ETIMEDOUT',
+  'ECONNRESET',
+  'EPIPE',
+];
+
+const REDIS_ERROR_PATTERNS = [
+  'Redis connection',
+  'NOAUTH',
+  'LOADING',
+  'READONLY',
+  'CLUSTERDOWN',
+];
+
 interface RetryOptions {
   maxRetries: number;
   baseDelayMs: number;
@@ -18,9 +43,26 @@ const calculateBackoffDelay = (
   baseDelayMs: number,
   maxJitterMs: number,
 ): number => {
-  const baseDelay = Math.min(baseDelayMs * 2 ** attempt, 2000);
+  const baseDelay = Math.min(baseDelayMs * 2 ** attempt, MAX_BACKOFF_CAP_MS);
   const jitter = Math.floor(Math.random() * maxJitterMs);
   return baseDelay + jitter;
+};
+
+const isMongoError = (name: string): boolean => {
+  return MONGO_ERROR_NAMES.includes(name);
+};
+
+const isNetworkError = (code: string, message: string): boolean => {
+  if (NETWORK_ERROR_CODES.includes(code)) return true;
+  return NETWORK_ERROR_CODES.slice(0, 3).some((c) => message.includes(c));
+};
+
+const isRedisError = (message: string): boolean => {
+  return REDIS_ERROR_PATTERNS.some((p) => message.includes(p));
+};
+
+const isSqsError = (name: string): boolean => {
+  return name.includes('ServiceException') || name.includes('SQS');
 };
 
 const isRetryableError = (err: unknown): boolean => {
@@ -30,36 +72,12 @@ const isRetryableError = (err: unknown): boolean => {
     const name = err.name || '';
     const message = err.message || '';
     const code = (err as any).code || '';
-    const mongoErrors = [
-      'MongoNetworkError',
-      'MongoServerError',
-      'MongoTimeoutError',
-      'MongoNetworkTimeoutError',
-      'MongoWriteConcernError',
-    ];
-    if (mongoErrors.includes(name)) return true;
-    if (name === 'MongoServerError' || code === 'ECONNREFUSED') return true;
-    if (['ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET', 'EPIPE'].includes(code)) {
-      return true;
-    }
-    if (
-      message.includes('ECONNREFUSED') ||
-      message.includes('ETIMEDOUT') ||
-      message.includes('ECONNRESET')
-    ) {
-      return true;
-    }
-    const redisPatterns = [
-      'Redis connection',
-      'NOAUTH',
-      'LOADING',
-      'READONLY',
-      'CLUSTERDOWN',
-    ];
-    if (redisPatterns.some((p) => message.includes(p))) return true;
-    if (name.includes('ServiceException') || name.includes('SQS')) {
-      return true;
-    }
+    return (
+      isMongoError(name) ||
+      isNetworkError(code, message) ||
+      isRedisError(message) ||
+      isSqsError(name)
+    );
   }
   return false;
 };
