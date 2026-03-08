@@ -7,16 +7,16 @@ import { JobRepository } from '../repositories/job.repository';
 import { JobSchedulerRunDetailsRepository } from '../repositories/job_run_details.repository';
 import { JobSchedulerRunStatus, JobStatus } from '../types';
 
-const enqueueJobWithDelay = (
+const enqueueJobWithDelay = async (
   jobId: string,
   version: number,
   callbackTime: Date,
-) => {
+): Promise<void> => {
   const delaySeconds =
     moment(callbackTime).diff(moment(), 'seconds') > 0
       ? moment(callbackTime).diff(moment(), 'seconds')
       : 0;
-  enqueueJob({ jobId, version }, delaySeconds);
+  await enqueueJob({ jobId, version }, delaySeconds);
 };
 
 const triggerCallbacks = async () => {
@@ -52,9 +52,23 @@ const triggerCallbacks = async () => {
       JobStatus.IN_PROGRESS,
     ),
   ]);
-  jobsBetweenRange?.forEach((job) => {
-    enqueueJobWithDelay(job.jobId, job.version, job.callbackTime);
-  });
+  const enqueueResults = await Promise.allSettled(
+    jobsBetweenRange.map((job) =>
+      enqueueJobWithDelay(job.jobId, job.version, job.callbackTime),
+    ),
+  );
+  const failedEnqueues = enqueueResults
+    .map((result, index) => ({ result, jobId: jobsBetweenRange[index].jobId }))
+    .filter((entry) => entry.result.status === 'rejected');
+  if (failedEnqueues.length > 0) {
+    Logger.error({
+      message: 'Some jobs failed to enqueue to SQS',
+      num_key1: 'failedCount',
+      num_key1_value: failedEnqueues.length,
+      key1: 'failedJobIds',
+      key1_value: JSON.stringify(failedEnqueues.map((entry) => entry.jobId)),
+    });
+  }
   await JobSchedulerRunDetailsRepository.updateRunStatus(
     startTime,
     JobSchedulerRunStatus.COMPLETED,
