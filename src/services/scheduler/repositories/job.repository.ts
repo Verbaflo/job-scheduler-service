@@ -31,7 +31,7 @@ const createOrUpdateJob = async (job: {
       setDefaultsOnInsert: true,
     },
   );
-  return buildJobDocument(job);
+  return buildJobDocument(createdJobDocument);
 };
 
 const findJobById = async (jobId: string): Promise<JobDocument | undefined> => {
@@ -67,7 +67,7 @@ const getScheduledJobBetweenTimeRange = async (
   return jobs.map((job) => buildJobDocument(job));
 };
 
-export const JobRespository = {
+export const JobRepository = {
   createOrUpdateJob,
   findJobById,
   updateJobStatus,
