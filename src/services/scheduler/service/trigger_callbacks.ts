@@ -3,7 +3,7 @@ import moment from 'moment';
 import { Logger } from '../../../common/logger';
 import { enqueueJob } from '../../../sqs/producers/job_processor';
 import { THRESHOLD_SECONDS } from '../constants';
-import { JobRespository } from '../repositories/job.repository';
+import { JobRepository } from '../repositories/job.repository';
 import { JobSchedulerRunDetailsRepository } from '../repositories/job_run_details.repository';
 import { JobSchedulerRunStatus, JobStatus } from '../types';
 
@@ -33,7 +33,7 @@ const triggerCallbacks = async () => {
     );
   const startTime = getLastCompletedJobTime();
   const endTime = moment().add(THRESHOLD_SECONDS, 'seconds').toDate();
-  const jobsBetweenRange = await JobRespository.getScheduledJobBetweenTimeRange(
+  const jobsBetweenRange = await JobRepository.getScheduledJobBetweenTimeRange(
     startTime,
     endTime,
   );
@@ -47,7 +47,7 @@ const triggerCallbacks = async () => {
   });
   await Promise.all([
     JobSchedulerRunDetailsRepository.createRunDetails(endTime),
-    JobRespository.updateJobBulk(
+    JobRepository.updateJobBulk(
       jobsBetweenRange.map((job) => job.jobId),
       JobStatus.IN_PROGRESS,
     ),
