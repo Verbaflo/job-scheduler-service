@@ -5,7 +5,7 @@ import { Logger } from './logger';
 const acquireLock = async (key: string, ttlInSeconds: number) => {
   const result = await RedisService.setValue({
     key,
-    value: "true",
+    value: 'true',
     ttlInSeconds,
     nx: true,
   });

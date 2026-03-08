@@ -24,10 +24,7 @@ const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
 const calculateBackoffDelay = (attempt: number): number => {
-  const baseDelay = Math.min(
-    SCHEDULE_JOB_BASE_DELAY_MS * 2 ** attempt,
-    2000,
-  );
+  const baseDelay = Math.min(SCHEDULE_JOB_BASE_DELAY_MS * 2 ** attempt, 2000);
   const jitter = Math.floor(Math.random() * SCHEDULE_JOB_MAX_JITTER_MS);
   return baseDelay + jitter;
 };
@@ -106,8 +103,7 @@ const scheduleJob = async (
           throw err;
         }
         lastError = err;
-        const errorMessage =
-          err instanceof Error ? err.message : String(err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
         if (attempt < SCHEDULE_JOB_MAX_RETRIES) {
           const delay = calculateBackoffDelay(attempt);
           Logger.warning({
@@ -133,8 +129,7 @@ const scheduleJob = async (
       key2: 'maxRetries',
       key2_value: String(SCHEDULE_JOB_MAX_RETRIES),
       error_message: finalErrorMessage,
-      error_stack:
-        lastError instanceof Error ? lastError.stack : undefined,
+      error_stack: lastError instanceof Error ? lastError.stack : undefined,
     });
     throw lastError;
   } finally {
