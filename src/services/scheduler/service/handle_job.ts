@@ -2,7 +2,7 @@ import { isAxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { HttpClient } from '../../../common/http_client';
 import { Logger } from '../../../common/logger';
-import { EXTERNAL_SERVICE_TIMEOUT_IN_SECONDS } from '../constants';
+import { EXTERNAL_SERVICE_TIMEOUT_IN_MS } from '../constants';
 import { JobRepository } from '../repositories/job.repository';
 import { JobStatus } from '../types';
 
@@ -48,7 +48,7 @@ const handleJob = async (jobId: string, version: number): Promise<void> => {
         'x-idempotency-key': jobId,
         job_id: jobId,
       },
-      timeout: EXTERNAL_SERVICE_TIMEOUT_IN_SECONDS,
+      timeout: EXTERNAL_SERVICE_TIMEOUT_IN_MS,
     });
     await JobRepository.updateJobStatus(jobId, JobStatus.SUCCESS);
   } catch (err: any) {

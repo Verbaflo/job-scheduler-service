@@ -4,9 +4,12 @@ import { RequestContext } from '../middlewares/request_context';
 import { SchedulerService } from '../services/scheduler/service';
 
 const startJobProcessorCron = () => {
+  let isRunning = false;
   cron.schedule('*/1 * * * *', async () => {
+    if (isRunning) return;
+    isRunning = true;
     const requestId = crypto.randomUUID();
-    RequestContext.runWithRequestId(requestId, async () => {
+    await RequestContext.runWithRequestId(requestId, async () => {
       const startedAt = new Date().toISOString();
       Logger.info({
         message: 'jobProcessorCron started',
@@ -20,6 +23,9 @@ const startJobProcessorCron = () => {
           message: 'jobProcessorCron failed',
           error_message: err?.message,
         });
+      }
+      finally {
+        isRunning = false;
       }
       Logger.info({
         message: 'jobProcessorCron completed',
