@@ -4,7 +4,10 @@ import { RequestContext } from '../middlewares/request_context';
 import { SchedulerService } from '../services/scheduler/service';
 
 const startJobProcessorCron = () => {
+  let isRunning = false;
   cron.schedule('*/1 * * * *', async () => {
+    if (isRunning) return;
+    isRunning = true;
     const requestId = crypto.randomUUID();
     await RequestContext.runWithRequestId(requestId, async () => {
       const startedAt = new Date().toISOString();
