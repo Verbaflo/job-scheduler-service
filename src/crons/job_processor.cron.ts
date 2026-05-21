@@ -6,7 +6,7 @@ import { SchedulerService } from '../services/scheduler/service';
 const startJobProcessorCron = () => {
   cron.schedule('*/1 * * * *', async () => {
     const requestId = crypto.randomUUID();
-    RequestContext.runWithRequestId(requestId, async () => {
+    await RequestContext.runWithRequestId(requestId, async () => {
       const startedAt = new Date().toISOString();
       Logger.info({
         message: 'jobProcessorCron started',
