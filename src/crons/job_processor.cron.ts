@@ -24,6 +24,9 @@ const startJobProcessorCron = () => {
           error_message: err?.message,
         });
       }
+      finally {
+        isRunning = false;
+      }
       Logger.info({
         message: 'jobProcessorCron completed',
         key1: 'startedAt',
