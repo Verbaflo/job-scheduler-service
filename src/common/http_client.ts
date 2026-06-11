@@ -5,7 +5,7 @@ import { RequestContext } from '../middlewares/request_context';
 import { Logger } from './logger';
 
 const instance: AxiosInstance = axios.create({
-  timeout: 1000,
+  timeout: 10000,
 });
 
 axiosRetry(instance, {
