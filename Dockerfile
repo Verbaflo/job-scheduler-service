@@ -7,7 +7,6 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Install dependencies (full, including dev) for building
-COPY .env ./
 COPY package.json  ./
 RUN npm install
 
