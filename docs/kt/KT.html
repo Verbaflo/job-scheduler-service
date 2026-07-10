@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>KT — job-scheduler-service</title>
+<style>
+  :root{
+    --bg:#f6f7f9;--card:#fff;--ink:#1c2230;--muted:#6b7280;--line:#e4e7ec;
+    --accent:#3b6ef5;--accent-soft:#eaf0ff;--warn:#d9822b;--warn-soft:#fdf3e7;
+    --good:#2e8b57;--code-bg:#f2f4f7;--danger:#c0392b;--danger-soft:#fdecec;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.55;font-size:15px}
+  .wrap{max-width:960px;margin:0 auto;padding:32px 20px 80px}
+  header.doc{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--accent);border-radius:10px;padding:24px 26px;margin-bottom:22px}
+  header.doc h1{margin:0 0 6px;font-size:24px}
+  .meta{color:var(--muted);font-size:13px;margin:0}
+  .meta table{border-collapse:collapse;margin-top:12px;width:100%}
+  .meta td{padding:4px 10px 4px 0;vertical-align:top;font-size:13px}
+  .meta td.k{color:var(--muted);white-space:nowrap;width:150px}
+  .principle{background:var(--accent-soft);border:1px solid #cbd9ff;border-radius:8px;padding:12px 16px;margin:18px 0 26px;font-size:14px}
+  .principle b{color:var(--accent)}
+  section.card{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:18px 22px;margin-bottom:18px}
+  section.card.appendix{border-left-color:var(--warn)}
+  section.card h2{margin:0 0 8px;font-size:18px;display:flex;align-items:baseline;gap:10px}
+  section.card h2 .num{font-size:13px;color:#fff;background:var(--accent);border-radius:5px;padding:1px 8px;font-weight:600}
+  section.card.appendix h2 .num{background:var(--warn)}
+  h3{font-size:14.5px;margin:16px 0 6px}
+  p{margin:8px 0}
+  code,.mono{font-family:var(--mono);font-size:12.5px}
+  code{background:var(--code-bg);padding:1px 5px;border-radius:4px}
+  .scrollx{overflow-x:auto}
+  table.grid{border-collapse:collapse;width:100%;margin-top:8px;font-size:12.5px}
+  table.grid th,table.grid td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+  table.grid th{background:var(--code-bg);font-weight:600}
+  .diagram{border:1px solid var(--line);border-radius:6px;background:#fbfcfe;padding:12px;margin-top:10px;overflow-x:auto}
+  .diagram-cap{font-size:12px;color:var(--muted);margin:6px 2px 0}
+  .seq{font-family:var(--mono);font-size:12px;background:#f7f9fc;border:1px solid var(--line);border-radius:6px;padding:12px 16px;margin-top:8px;white-space:pre-wrap}
+  .seq ol{margin:0;padding-left:20px;white-space:normal}
+  .seq li{margin:3px 0}
+  .whywhat{display:flex;gap:10px;margin:10px 0;flex-wrap:wrap}
+  .whywhat>div{flex:1 1 300px;border-radius:6px;padding:8px 12px;font-size:13px}
+  .why{background:#eef7f0;border:1px solid #bfe3ca}
+  .breaks{background:var(--warn-soft);border:1px solid #f0d3ac}
+  .why b{color:var(--good)}.breaks b{color:var(--warn)}
+  .pair{border:1px solid var(--line);border-radius:6px;padding:2px 12px;margin:8px 0;background:#fff}
+  .pair .t{font-weight:600;font-size:13.5px;margin:8px 0 2px}
+  .todohuman{background:var(--danger-soft);border:1px solid #f3b4b4;border-left:4px solid var(--danger);border-radius:6px;padding:8px 12px;font-size:13px;margin:8px 0}
+  .todohuman b{color:var(--danger)}
+  .note{background:#fffef2;border:1px solid #ece4b0;border-radius:6px;padding:8px 12px;font-size:13px;margin:8px 0}
+  .small{font-size:12.5px;color:var(--muted)}
+  ul.tight{margin:6px 0;padding-left:20px}
+  ul.tight li{margin:3px 0;font-size:13.5px}
+  .toc{columns:2;column-gap:24px;font-size:13.5px}
+  .toc a{color:var(--accent);text-decoration:none}.toc a:hover{text-decoration:underline}
+  footer.doc{color:var(--muted);font-size:12px;text-align:center;margin-top:30px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="doc">
+    <h1>KT — job-scheduler-service</h1>
+    <p class="meta">A small Express/TypeScript service. A caller says "call this URL after N seconds"; this service stores the job, waits, then makes the HTTP POST when it is due. Gaps only a human can fill are marked in red as <b style="color:var(--danger)">TODO (human)</b>.</p>
+    <table class="meta">
+      <tr><td class="k">Service / paths</td><td><code>src/services/scheduler/</code> · <code>src/sqs/</code> · <code>src/crons/</code> · <code>src/common/</code> · <code>src/infra/redis/</code> · <code>src/startup/</code></td></tr>
+      <tr><td class="k">Author (leaving)</td><td><span style="color:var(--danger)">TODO (human): your name</span></td></tr>
+      <tr><td class="k">Next owner</td><td><span style="color:var(--danger)">TODO (human)</span></td></tr>
+      <tr><td class="k">Last updated</td><td>2026-07-10</td></tr>
+      <tr><td class="k">Related</td><td>MongoDB · Redis (locks) · AWS SQS + DLQ · AWS Secrets Manager · OpenTelemetry / Jaeger · any caller service that needs a delayed HTTP callback (e.g. vf-core, dynamic-trigger-engine)</td></tr>
+    </table>
+  </header>
+
+  <div class="principle">
+    <b>The one rule:</b> the code shows the <i>what</i> and <i>how</i>. This doc adds the <b>WHY</b> and the <b>WHAT BREAKS</b>. Three facts to keep in your head: (1) timing comes from <b>SQS <code>DelaySeconds</code></b>, not a tight loop; (2) a <b>once-a-minute cron</b> is the safety net that finds due jobs and puts them on the queue; (3) the <b>version number</b> on each job is the whole trick for throwing away stale or duplicate queue messages.
+  </div>
+
+  <section class="card">
+    <h2><span class="num">TOC</span> Sections</h2>
+    <div class="toc">
+      <a href="#overview">1. Overview</a><br/>
+      <a href="#req">2. Functional requirements (APIs)</a><br/>
+      <a href="#hld">3. High-level design</a><br/>
+      <a href="#seq">4. Sequence diagrams</a><br/>
+      <a href="#events">5. Event processors (SQS consumer)</a><br/>
+      <a href="#cron">6. Cron jobs</a><br/>
+      <a href="#data">7. Data models &amp; indexes</a><br/>
+      <a href="#deps">8. External deps &amp; secrets</a><br/>
+      <a href="#tenant">9. Per-client / multi-tenant quirks</a><br/>
+      <a href="#config">10. Config &amp; env vars</a><br/>
+      <a href="#runbook">11. Runbook</a><br/>
+      <a href="#failure">12. Failure modes &amp; idempotency</a><br/>
+      <a href="#gotchas">13. Gotchas / why / tribal knowledge</a><br/>
+      <a href="#debt">14. Known bugs &amp; tech debt</a><br/>
+      <a href="#testing">15. How to test locally</a><br/>
+      <a href="#contacts">16. Ownership &amp; contacts</a><br/>
+      <a href="#a1">A1. Appendix — SQS &amp; DLQ specifics</a><br/>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="card" id="overview">
+    <h2><span class="num">1</span> Overview</h2>
+    <p>This service runs delayed HTTP callbacks for other Verba services. A caller sends one request: "here is a <code>url</code>, a <code>payload</code>, a <code>jobId</code>, and a delay in seconds — POST that payload to that url after the delay." The service saves the job in MongoDB, and later makes the HTTP POST at the right time. That is the whole job.</p>
+    <p>Three parts do the work together:</p>
+    <ul class="tight">
+      <li><b>Schedule API</b> (<code>services/scheduler/</code>) — takes the request, locks the <code>jobId</code> in Redis, and upserts the job into MongoDB with status <code>scheduled</code>.</li>
+      <li><b>Once-a-minute cron</b> (<code>crons/job_processor.cron.ts</code> → <code>triggerCallbacks</code>) — finds jobs that are due soon, marks them <code>inProgress</code>, and puts each on SQS with a delay so SQS delivers it close to the exact due time.</li>
+      <li><b>SQS consumer</b> (<code>sqs/consumers/job_processor/</code> → <code>handleJob</code>) — reads a job off the queue, checks it is still the current version and not cancelled, makes the HTTP POST, and marks the job <code>success</code> or <code>failed</code>.</li>
+    </ul>
+    <p class="small">Why two paths (cron + an immediate enqueue inside the schedule call)? The cron scans in one-minute windows. A job scheduled with a short delay, right after a window already passed, would sit unseen until... never. So the schedule call also enqueues the job straight away when it falls inside a window the cron has already claimed. See §13.</p>
+  </section>
+
+  <!-- 2 -->
+  <section class="card" id="req">
+    <h2><span class="num">2</span> Functional requirements (from APIs)</h2>
+    <p>Mounted at <code>/api/v1</code> (<code>startup/routes.ts</code>) → scheduler base path <code>/scheduler</code> (<code>services/scheduler/index.ts</code>) → routes <code>POST /</code> and <code>POST /cancel</code> (<code>services/scheduler/routes.ts</code>).</p>
+    <div class="note"><b>Auth:</b> there is <b>no auth middleware</b> in this service. The middleware stack is request-context, CORS, JSON body, OTel enricher, morgan, request-logger (<code>app.ts</code>). Access control is network-level only (who can reach the pod). Treat these endpoints as internal-only.</div>
+    <div class="scrollx">
+    <table class="grid">
+      <tr><th>Method + path</th><th>What it does</th><th>Body</th><th>Key rule / validation</th></tr>
+      <tr><td>POST <code>/api/v1/scheduler</code> (201)</td><td>schedule (or re-schedule) a delayed callback</td><td><code>url</code>, <code>payload</code>, <code>delayInSeconds</code>, <code>source</code>, <code>jobId</code></td><td><code>jobId</code>, <code>url</code>, <code>delayInSeconds</code> required; <code>delayInSeconds</code> must be &gt; 0 (<code>validations.ts</code>). Same <code>jobId</code> again = upsert + version bump.</td></tr>
+      <tr><td>POST <code>/api/v1/scheduler/cancel</code> (201)</td><td>cancel a job so the consumer skips it</td><td><code>jobId</code></td><td><code>jobId</code> required. Returns <code>{success:false}</code> if job missing, already <code>cancelled</code>, or already <code>success</code>.</td></tr>
+      <tr><td>GET <code>/health</code></td><td>liveness — process is up</td><td>—</td><td>always 200</td></tr>
+      <tr><td>GET <code>/ready</code></td><td>readiness — Mongo connected</td><td>—</td><td>200 if <code>mongoose.connection.readyState === 1</code>, else 503</td></tr>
+    </table>
+    </div>
+    <div class="todohuman"><b>Doc drift (fix in CLAUDE.md):</b> the repo's <code>CLAUDE.md</code> says the schedule path is <code>POST /api/v1/scheduler/schedule</code>. The real path is <code>POST /api/v1/scheduler</code> (the router registers <code>POST /</code>). Update callers/docs accordingly.</div>
+    <p class="small">The request field <code>source</code> is in the type but is <b>never validated and never stored</b> (see §9). So "who scheduled this job" is not tracked anywhere.</p>
+  </section>
+
+  <!-- 3 -->
+  <section class="card" id="hld">
+    <h2><span class="num">3</span> High-level design</h2>
+    <p>Three planes: the schedule call (write the job), the cron (find due jobs and queue them), and the consumer (fire the callback). SQS sits in the middle and does the actual waiting via <code>DelaySeconds</code>.</p>
+    <div class="diagram">
+      <svg viewBox="0 0 940 470" width="940" height="470" xmlns="http://www.w3.org/2000/svg" font-family="monospace" font-size="11.5">
+        <defs>
+          <marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#3b6ef5"/></marker>
+          <marker id="o" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#d9822b"/></marker>
+        </defs>
+
+        <text x="14" y="20" fill="#6b7280">Plane 1 — schedule call (write the job, maybe queue it now)</text>
+        <rect x="14"  y="30" width="140" height="46" rx="6" fill="#eaf0ff" stroke="#3b6ef5"/><text x="84"  y="49" text-anchor="middle">Caller service</text><text x="84"  y="64" text-anchor="middle" fill="#6b7280">vf-core / DTE</text>
+        <rect x="190" y="30" width="140" height="46" rx="6" fill="#fff"    stroke="#3b6ef5"/><text x="260" y="49" text-anchor="middle">POST /scheduler</text><text x="260" y="64" text-anchor="middle" fill="#6b7280">controller + svc</text>
+        <rect x="366" y="30" width="130" height="46" rx="6" fill="#eaf0ff" stroke="#3b6ef5"/><text x="431" y="49" text-anchor="middle">Redis SET NX</text><text x="431" y="64" text-anchor="middle" fill="#6b7280">lock jobId 10s</text>
+        <rect x="532" y="30" width="170" height="46" rx="6" fill="#eef7f0" stroke="#2e8b57"/><text x="617" y="49" text-anchor="middle">scheduled_internal_job</text><text x="617" y="64" text-anchor="middle" fill="#6b7280">upsert · version++</text>
+        <rect x="738" y="30" width="150" height="46" rx="6" fill="#fdf3e7" stroke="#d9822b"/><text x="813" y="49" text-anchor="middle">SQS queue</text><text x="813" y="64" text-anchor="middle" fill="#6b7280">only if in window</text>
+        <line x1="154" y1="53" x2="188" y2="53" stroke="#3b6ef5" marker-end="url(#a)"/>
+        <line x1="330" y1="53" x2="364" y2="53" stroke="#3b6ef5" marker-end="url(#a)"/>
+        <line x1="496" y1="53" x2="530" y2="53" stroke="#3b6ef5" marker-end="url(#a)"/>
+        <line x1="702" y1="53" x2="736" y2="53" stroke="#d9822b" marker-end="url(#o)"/>
+
+        <text x="14" y="150" fill="#6b7280">Plane 2 — cron, every minute (the safety net)</text>
+        <rect x="14"  y="160" width="140" height="46" rx="6" fill="#fdf3e7" stroke="#d9822b"/><text x="84"  y="179" text-anchor="middle">node-cron */1</text><text x="84"  y="194" text-anchor="middle" fill="#6b7280">triggerCallbacks</text>
+        <rect x="190" y="160" width="160" height="46" rx="6" fill="#eef7f0" stroke="#2e8b57"/><text x="270" y="179" text-anchor="middle">find due jobs</text><text x="270" y="194" text-anchor="middle" fill="#6b7280">callbackTime &lt;= now+60s</text>
+        <rect x="386" y="160" width="140" height="46" rx="6" fill="#eef7f0" stroke="#2e8b57"/><text x="456" y="179" text-anchor="middle">updateMany</text><text x="456" y="194" text-anchor="middle" fill="#6b7280">status=inProgress</text>
+        <rect x="562" y="160" width="150" height="46" rx="6" fill="#fdf3e7" stroke="#d9822b"/><text x="637" y="179" text-anchor="middle">SQS enqueue</text><text x="637" y="194" text-anchor="middle" fill="#6b7280">DelaySeconds</text>
+        <rect x="748" y="160" width="150" height="46" rx="6" fill="#eef7f0" stroke="#2e8b57"/><text x="823" y="176" text-anchor="middle">run_details</text><text x="823" y="190" text-anchor="middle" fill="#6b7280">window tracking</text>
+        <line x1="154" y1="183" x2="188" y2="183" stroke="#3b6ef5" marker-end="url(#a)"/>
+        <line x1="350" y1="183" x2="384" y2="183" stroke="#3b6ef5" marker-end="url(#a)"/>
+        <line x1="526" y1="183" x2="560" y2="183" stroke="#d9822b" marker-end="url(#o)"/>
+        <line x1="712" y1="183" x2="746" y2="183" stroke="#3b6ef5" marker-end="url(#a)"/>
+
+        <text x="14" y="290" fill="#6b7280">Plane 3 — consumer (fire the callback when SQS delivers)</text>
+        <rect x="14"  y="300" width="130" height="46" rx="6" fill="#fdf3e7" stroke="#d9822b"/><text x="79"  y="319" text-anchor="middle">SQS message</text><text x="79"  y="334" text-anchor="middle" fill="#6b7280">{jobId, version}</text>
+        <rect x="180" y="300" width="150" height="46" rx="6" fill="#fff"    stroke="#3b6ef5"/><text x="255" y="319" text-anchor="middle">sqs-consumer</text><text x="255" y="334" text-anchor="middle" fill="#6b7280">batch 10 · retry x3</text>
+        <rect x="366" y="300" width="150" height="46" rx="6" fill="#fff"    stroke="#3b6ef5"/><text x="441" y="319" text-anchor="middle">version + status</text><text x="441" y="334" text-anchor="middle" fill="#6b7280">skip stale/cancelled</text>
+        <rect x="552" y="300" width="150" height="46" rx="6" fill="#fdf3e7" stroke="#d9822b"/><text x="627" y="319" text-anchor="middle">HTTP POST url</text><text x="627" y="334" text-anchor="middle" fill="#6b7280">axios retry x3</text>
+        <rect x="738" y="300" width="150" height="46" rx="6" fill="#eef7f0" stroke="#2e8b57"/><text x="813" y="319" text-anchor="middle">mark success</text><text x="813" y="334" text-anchor="middle" fill="#6b7280">or failed</text>
+        <line x1="144" y1="323" x2="178" y2="323" stroke="#d9822b" marker-end="url(#o)"/>
+        <line x1="330" y1="323" x2="364" y2="323" stroke="#3b6ef5" marker-end="url(#a)"/>
+        <line x1="516" y1="323" x2="550" y2="323" stroke="#3b6ef5" marker-end="url(#a)"/>
+        <line x1="702" y1="323" x2="736" y2="323" stroke="#3b6ef5" marker-end="url(#a)"/>
+
+        <text x="14" y="400" fill="#6b7280">On failure</text>
+        <rect x="14"  y="408" width="270" height="44" rx="6" fill="#fff" stroke="#3b6ef5"/><text x="149" y="428" text-anchor="middle">HTTP / app error → delete msg,</text><text x="149" y="443" text-anchor="middle" fill="#6b7280">mark job failed (no redelivery)</text>
+        <rect x="320" y="408" width="300" height="44" rx="6" fill="#fdf3e7" stroke="#d9822b"/><text x="470" y="428" text-anchor="middle">infra error → leave msg on queue,</text><text x="470" y="443" text-anchor="middle" fill="#6b7280">SQS redelivers → DLQ after maxReceiveCount</text>
+      </svg>
+      <p class="diagram-cap">The one spot that most often bites: the cron has <b>no overlap guard</b> (§6, §13) and the job collection has <b>no indexes</b> (§7). Both are quiet until load grows.</p>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="card" id="seq">
+    <h2><span class="num">4</span> Sequence diagrams</h2>
+
+    <h3>4a. Schedule a job</h3>
+    <div class="diagram">
+      <svg viewBox="0 0 900 270" width="900" height="270" xmlns="http://www.w3.org/2000/svg" font-family="monospace" font-size="11">
+        <defs><marker id="s" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#1c2230"/></marker></defs>
+        <g fill="#eaf0ff" stroke="#3b6ef5">
+          <rect x="10" y="10" width="120" height="28" rx="5"/><rect x="200" y="10" width="120" height="28" rx="5"/>
+          <rect x="390" y="10" width="110" height="28" rx="5"/><rect x="560" y="10" width="140" height="28" rx="5"/><rect x="760" y="10" width="120" height="28" rx="5"/>
+        </g>
+        <g text-anchor="middle" fill="#1c2230" font-size="10.5"><text x="70" y="28">Caller</text><text x="260" y="28">scheduleJob</text><text x="445" y="28">Redis</text><text x="630" y="28">Mongo</text><text x="820" y="28">SQS</text></g>
+        <g stroke="#c7ccd6" stroke-dasharray="3,3">
+          <line x1="70" y1="38" x2="70" y2="262"/><line x1="260" y1="38" x2="260" y2="262"/><line x1="445" y1="38" x2="445" y2="262"/><line x1="630" y1="38" x2="630" y2="262"/><line x1="820" y1="38" x2="820" y2="262"/>
+        </g>
+        <g stroke="#1c2230">
+          <line x1="70"  y1="62"  x2="258" y2="62"  marker-end="url(#s)"/>
+          <line x1="260" y1="90"  x2="443" y2="90"  marker-end="url(#s)"/>
+          <line x1="260" y1="120" x2="628" y2="120" marker-end="url(#s)"/>
+          <line x1="260" y1="150" x2="628" y2="150" marker-end="url(#s)"/>
+          <line x1="260" y1="180" x2="818" y2="180" marker-end="url(#s)" stroke-dasharray="4,3"/>
+          <line x1="258" y1="222" x2="72"  y2="222" marker-end="url(#s)"/>
+        </g>
+        <g fill="#6b7280">
+          <text x="76"  y="56">1. POST /scheduler {url, payload, delayInSeconds, jobId}</text>
+          <text x="266" y="84">2. SET NX lock jobId (10s) — 409 if held</text>
+          <text x="266" y="114">3. upsert job, status=scheduled, version++</text>
+          <text x="266" y="144">4. read latest run window (getLastRunDetails)</text>
+          <text x="266" y="174">5. if callbackTime is inside window → status=inProgress + enqueue now</text>
+          <text x="76"  y="216">6. 201 {job}. Lock released in finally.</text>
+        </g>
+      </svg>
+      <p class="diagram-cap">Steps 3–5 run inside <code>retryWithBackoff</code> (3 tries) for infrastructure errors. Step 5 (dashed) only fires when the job lands in a window the cron already claimed.</p>
+    </div>
+
+    <h3>4b. Cron trigger — <code>triggerCallbacks</code>, once a minute</h3>
+    <div class="seq"><ol>
+      <li>Read the last <b>completed</b> run → <code>startTime = its endTimeStamp</code>. If none exists, fall back to the hard-coded bootstrap date <code>2025-10-07</code> (§13).</li>
+      <li><code>endTime = now + 60s</code> (<code>THRESHOLD_SECONDS</code>).</li>
+      <li>Find <code>scheduled</code> jobs with <code>callbackTime in (startTime, endTime]</code>.</li>
+      <li>In parallel: create a new run row (status <code>inProgress</code>, <code>endTimeStamp = endTime</code>) <b>and</b> bulk-mark those jobs <code>inProgress</code>.</li>
+      <li>Enqueue each job to SQS with <code>DelaySeconds = callbackTime - now</code> (floored at 0). Failures are logged per job via <code>Promise.allSettled</code>, not thrown.</li>
+      <li>Mark run rows with <code>endTimeStamp &gt;= startTime</code> and status <code>inProgress</code> as <code>completed</code>.</li>
+    </ol></div>
+
+    <h3>4c. Consumer — <code>handleJob</code> per SQS message</h3>
+    <div class="seq"><ol>
+      <li>Parse <code>{jobId, version}</code>. Look up the job by <code>jobId</code>. Missing → log + return (message later deleted).</li>
+      <li><b>Version guard:</b> if the message version ≠ the job's current version → return (a newer schedule replaced this one). §13.</li>
+      <li><b>Cancel guard:</b> if status is <code>cancelled</code> → return.</li>
+      <li>HTTP POST <code>url</code> with <code>payload</code>, headers <code>x-idempotency-key: jobId</code> and <code>job_id: jobId</code>, 10s timeout. axios-retry does up to 3 tries on 5xx/429/network.</li>
+      <li>Success → mark <code>success</code>, delete the SQS message. HTTP failure (AxiosError) → mark <code>failed</code>, delete the message (no consumer-level retry). Infrastructure error → re-throw so the outer retry/redelivery handles it.</li>
+    </ol></div>
+  </section>
+
+  <!-- 5 -->
+  <section class="card" id="events">
+    <h2><span class="num">5</span> Event processors (SQS consumer)</h2>
+    <p class="small">Started by <code>startAllConsumers()</code> only when <code>SHOULD_RUN_CONSUMERS === 'true'</code>. Uses the <code>sqs-consumer</code> library with <code>handleMessageBatch</code>, <code>batchSize: 10</code>. Deletion is <b>manual</b> — the batch handler returns <code>undefined</code>, so the library does not auto-delete; the code sends its own <code>DeleteMessageCommand</code>.</p>
+    <div class="scrollx">
+    <table class="grid">
+      <tr><th>Trigger</th><th>What it does</th><th>Dedup / idempotency</th><th>On failure</th></tr>
+      <tr><td>Message <code>{jobId, version}</code></td><td>runs <code>handleJob</code> inside <code>retryWithBackoff</code> (3 tries, 500ms base + jitter, cap 2s)</td><td>version match + status check; each message gets a fresh <code>requestId</code> in <code>RequestContext</code></td><td>see rows below</td></tr>
+      <tr><td>Stale version</td><td>current job version ≠ message version → skip, no callback</td><td>this <b>is</b> the dedup — a re-schedule bumps version and orphans older messages</td><td>message deleted after handler returns cleanly</td></tr>
+      <tr><td>Cancelled job</td><td>status <code>cancelled</code> → skip, no callback</td><td>status check in <code>handleJob</code></td><td>message deleted</td></tr>
+      <tr><td>HTTP callback fails (AxiosError, after 3 axios retries)</td><td>mark job <code>failed</code></td><td>application error — <code>isRetryableError</code> returns false</td><td>message <b>deleted</b> (no redelivery); job stays <code>failed</code></td></tr>
+      <tr><td>Infra error (Mongo / Redis / network / SQS SDK)</td><td>re-thrown from <code>handleJob</code></td><td><code>isRetryableError</code> returns true</td><td>message <b>left on queue</b> → SQS redelivers → DLQ after <code>maxReceiveCount</code></td></tr>
+    </table>
+    </div>
+    <div class="note"><b>Two retry layers, on purpose.</b> axios-retry (in <code>HttpClient</code>) retries the callback 3× for 5xx/429/network. <code>retryWithBackoff</code> (in the consumer) retries only <b>infrastructure</b> errors 3×. HTTP failures are classified non-retryable at the consumer level precisely so they are not retried twice.</div>
+  </section>
+
+  <!-- 6 -->
+  <section class="card" id="cron">
+    <h2><span class="num">6</span> Cron jobs</h2>
+    <p class="small">Started by <code>startCrons()</code> only when <code>SHOULD_RUN_CRONS === 'true'</code>.</p>
+    <div class="scrollx">
+    <table class="grid">
+      <tr><th>Job</th><th>Schedule</th><th>What</th><th>Overlap guard</th><th>Idempotent?</th></tr>
+      <tr><td><code>startJobProcessorCron</code> → <code>triggerCallbacks</code></td><td><code>*/1 * * * *</code> (every minute)</td><td>find <code>scheduled</code> jobs due within the next 60s, mark them <code>inProgress</code>, enqueue each to SQS with a delay, and record the run window in <code>internal_job_run_details</code></td><td><b>NONE</b> — plain <code>node-cron</code>, no <code>max_instances</code>, no lock. If a run takes &gt; 1 min, the next tick overlaps it.</td><td>Mostly — the version guard + <code>inProgress</code> status stop most double work, but two overlapping runs can read the same <code>scheduled</code> rows before either marks them and <b>double-enqueue</b> (see §13).</td></tr>
+    </table>
+    </div>
+    <div class="note"><code>THRESHOLD_SECONDS = 60</code> in <code>constants.ts</code> must match the one-minute cron cadence. The constant even carries a comment saying so. Change one, change both — otherwise you get gaps (jobs missed) or overlaps (jobs enqueued twice).</div>
+  </section>
+
+  <!-- 7 -->
+  <section class="card" id="data">
+    <h2><span class="num">7</span> Data models &amp; indexes</h2>
+    <div class="scrollx">
+    <table class="grid">
+      <tr><th>Collection (Mongoose model name)</th><th>Key fields</th><th>Indexes</th><th>TTL / cleanup</th></tr>
+      <tr><td><code>scheduled_internal_job</code></td><td><code>jobId</code>, <code>url</code>, <code>payload</code>, <code>status</code> (scheduled/inProgress/success/failed/cancelled), <code>callbackTime</code>, <code>version</code> (Mongoose <code>versionKey</code>), <code>createdAt</code>/<code>updatedAt</code></td><td><b>only default <code>_id</code></b> — no index on <code>jobId</code>, <code>callbackTime</code>, or <code>status</code></td><td><b>none</b> — rows are never deleted; the collection grows forever</td></tr>
+      <tr><td><code>internal_job_run_details</code></td><td><code>status</code> (inProgress/completed), <code>endTimeStamp</code>, <code>createdAt</code>/<code>updatedAt</code></td><td><b>only default <code>_id</code></b> — queries sort by <code>createdAt</code> and filter <code>status</code>/<code>endTimeStamp</code>, all unindexed</td><td><b>none</b> — grows one row per cron tick (~1,440/day)</td></tr>
+    </table>
+    </div>
+    <div class="todohuman"><b>Flag (see §14):</b> every query in this service is a full collection scan. <code>getScheduledJobBetweenTimeRange</code> filters on <code>{callbackTime, status}</code>; <code>findJobById</code>/<code>updateJobStatus</code>/<code>updateJobBulk</code> filter on <code>jobId</code>; run-details queries sort by <code>createdAt</code>. None of these fields are indexed. Add a compound index on <code>(status, callbackTime)</code>, a <b>unique</b> index on <code>jobId</code>, and an index on run-details <code>(status, createdAt)</code>.</div>
+    <div class="todohuman"><b>Flag:</b> <code>jobId</code> is <b>not unique</b>. The schedule path is safe because a Redis lock serializes writes per <code>jobId</code>, but if the lock is ever bypassed or two docs slip in, <code>findOne({jobId})</code> silently returns just one. A unique index is the real guard.</div>
+    <div class="todohuman"><b>Doc drift (fix in CLAUDE.md):</b> <code>CLAUDE.md</code> names the run collection <code>job_scheduler_run_details</code>. The model actually registers <code>internal_job_run_details</code>. The job collection name (<code>scheduled_internal_job</code>) matches.</div>
+  </section>
+
+  <!-- 8 -->
+  <section class="card" id="deps">
+    <h2><span class="num">8</span> External deps &amp; secrets</h2>
+    <ul class="tight">
+      <li><b>MongoDB</b> — the only datastore. Connection string in <code>MONGO_URI</code>. Holds both collections above.</li>
+      <li><b>Redis</b> — used only for the per-<code>jobId</code> schedule lock (<code>SET NX EX</code>). Config: <code>REDIS_HOST</code>, <code>REDIS_PORT</code>, <code>REDIS_USERNAME</code>, <code>REDIS_PASSWORD</code>.</li>
+      <li><b>AWS SQS</b> — the delay queue. Queue URL in <code>SQS_JOB_PROCESSOR_URL</code>. Credentials via <code>AWS_ACCESS_KEY_ID</code> / <code>AWS_SECRET_ACCESS_KEY</code>, region <code>AWS_REGION</code> (default <code>eu-west-2</code>). A DLQ is expected behind an SQS redrive policy (configured in AWS, not in code).</li>
+      <li><b>AWS Secrets Manager</b> — optional. When <code>USE_AWS_SECRETS=true</code>, <code>initConfig</code> loads <code>AWS_SECRETS_ID</code> and fills env vars that are <b>not already set</b> (local <code>.env</code> wins).</li>
+      <li><b>OpenTelemetry → Jaeger</b> — traces via OTLP HTTP. Endpoint from <code>OTEL_EXPORTER_OTLP_ENDPOINT</code> / <code>JAEGER_ENDPOINT</code> (default <code>http://localhost:4318/v1/traces</code>).</li>
+      <li><b>Downstream callback targets</b> — any URL a caller passes. This service will POST to whatever <code>url</code> it is given. There is no allow-list.</li>
+    </ul>
+    <div class="todohuman"><b>TODO (human):</b> the SQS queue ARN and DLQ ARN per environment, the redrive <code>maxReceiveCount</code> and visibility timeout, who owns the AWS account, and the Secrets Manager secret name per environment.</div>
+    <div class="todohuman"><b>TODO (human):</b> which caller services actually use this in production, and whether any of them pass untrusted URLs (SSRF risk, given no allow-list).</div>
+  </section>
+
+  <!-- 9 -->
+  <section class="card" id="tenant">
+    <h2><span class="num">9</span> Per-client / multi-tenant quirks</h2>
+    <ul class="tight">
+      <li><b>This service is client-agnostic.</b> There is no client code, no per-client config, and no per-client branching anywhere in the code. It stores a URL and a payload and calls the URL. Any multi-tenant meaning lives entirely in the caller's <code>url</code> and <code>payload</code>.</li>
+      <li>The <code>source</code> field in the schedule request looks like it should say who owns the job, but it is <b>dropped</b> — not validated, not written to Mongo. If you need to attribute jobs to a caller or client, you must add persistence for it first.</li>
+      <li><code>retryCount</code> is passed into <code>createOrUpdateJob</code> too, but the schema does not define it, so it is also silently dropped.</li>
+    </ul>
+  </section>
+
+  <!-- 10 -->
+  <section class="card" id="config">
+    <h2><span class="num">10</span> Config &amp; env vars</h2>
+    <div class="scrollx">
+    <table class="grid">
+      <tr><th>Setting</th><th>What it controls</th><th>Default</th><th>Danger if wrong</th></tr>
+      <tr><td><code>SHOULD_RUN_CRONS</code></td><td>start the once-a-minute cron on this pod</td><td>required (<code>'true'</code>/other)</td><td>false everywhere → no job is ever found or fired</td></tr>
+      <tr><td><code>SHOULD_RUN_CONSUMERS</code></td><td>start the SQS consumer on this pod</td><td>required</td><td>false everywhere → jobs get queued but never called back</td></tr>
+      <tr><td><code>MONGO_URI</code></td><td>MongoDB connection</td><td>required</td><td>missing → process exits on boot</td></tr>
+      <tr><td><code>SQS_JOB_PROCESSOR_URL</code></td><td>the queue to enqueue/consume</td><td>required</td><td>wrong queue → jobs vanish or land where nothing reads them</td></tr>
+      <tr><td><code>REDIS_HOST</code> / <code>REDIS_PORT</code> / <code>REDIS_USERNAME</code> / <code>REDIS_PASSWORD</code></td><td>Redis for the schedule lock</td><td><code>REDIS_HOST</code> required; port 6379</td><td>down → every schedule call fails to lock and errors</td></tr>
+      <tr><td><code>AWS_REGION</code></td><td>AWS region for SQS + Secrets</td><td><code>eu-west-2</code></td><td>wrong region → SQS/Secrets calls fail</td></tr>
+      <tr><td><code>AWS_ACCESS_KEY_ID</code> / <code>AWS_SECRET_ACCESS_KEY</code></td><td>AWS credentials</td><td>required for SQS</td><td>missing/expired → enqueue + consume fail</td></tr>
+      <tr><td><code>USE_AWS_SECRETS</code> / <code>AWS_SECRETS_ID</code></td><td>load env from Secrets Manager on boot</td><td>off</td><td>on with wrong id → boot logs an error but continues with whatever env exists</td></tr>
+      <tr><td><code>PORT</code></td><td>HTTP port</td><td>3000</td><td>—</td></tr>
+      <tr><td><code>OTEL_EXPORTER_OTLP_ENDPOINT</code> / <code>JAEGER_ENDPOINT</code></td><td>trace export target</td><td>localhost:4318</td><td>wrong → no traces, service still works</td></tr>
+    </table>
+    </div>
+    <div class="note"><b>Split deployments.</b> <code>SHOULD_RUN_CRONS</code> and <code>SHOULD_RUN_CONSUMERS</code> let you run API pods and worker pods separately. Rule of thumb: exactly <b>one</b> place should run the cron (to avoid double-enqueue), and at least one place should run the consumer.</div>
+  </section>
+
+  <!-- 11 -->
+  <section class="card" id="runbook">
+    <h2><span class="num">11</span> Runbook (debug / ops)</h2>
+    <ul class="tight">
+      <li><b>Find a job:</b> in Mongo, <code>db.scheduled_internal_job.findOne({jobId})</code>. Look at <code>status</code>, <code>callbackTime</code>, <code>version</code>, <code>updatedAt</code>.</li>
+      <li><b>Stuck in <code>scheduled</code> (never fired):</b> the cron is not running or <code>SHOULD_RUN_CRONS</code> is false. Check the latest <code>internal_job_run_details</code> row — is a new one being created each minute? Check logs for <code>jobProcessorCron started</code> / <code>completed</code>.</li>
+      <li><b>Stuck in <code>inProgress</code>:</b> it was enqueued but the consumer did not finish. Check <code>SHOULD_RUN_CONSUMERS</code>, the SQS queue depth, and the DLQ. Look for <code>started processing job</code> and either <code>job processing failed...</code> line.</li>
+      <li><b><code>failed</code> job:</b> the HTTP callback failed after 3 axios retries. Grep <code>HTTP callback failed after axios retries</code> with the <code>jobId</code>; the log carries the target <code>url</code>. Check the target service's health.</li>
+      <li><b>Re-run a job safely:</b> POST <code>/api/v1/scheduler</code> again with the <b>same <code>jobId</code></b>. The upsert bumps <code>version</code>, resets status to <code>scheduled</code>, and orphans any old in-flight SQS message (the version guard drops it). This is the clean way to retry.</li>
+      <li><b>Messages in the DLQ:</b> those exhausted infrastructure retries. Fix the infra cause, then redrive the DLQ back to the main queue. Delivery is idempotent enough because of the version + status guards.</li>
+      <li><b>Where to look:</b> logs are structured Pino JSON with a <code>requestId</code> per request/message. Traces go to Jaeger under service name <code>job-scheduler-service</code>.</li>
+    </ul>
+    <div class="todohuman"><b>TODO (human):</b> the Sentry project / search filter for this service (if any), the CloudWatch/Grafana dashboard and alerts, and the exact SQS + DLQ queue names per environment.</div>
+  </section>
+
+  <!-- 12 -->
+  <section class="card" id="failure">
+    <h2><span class="num">12</span> Failure modes &amp; idempotency</h2>
+    <div class="scrollx">
+    <table class="grid">
+      <tr><th>Failure</th><th>What happens now</th><th>Retry safe?</th><th>How to recover</th></tr>
+      <tr><td>Duplicate SQS delivery (at-least-once)</td><td>version + status guards make the second run a no-op if the job already moved on</td><td>Yes</td><td>none needed</td></tr>
+      <tr><td>Job re-scheduled while an old message is in flight</td><td>old message has a lower version → dropped; only the newest runs</td><td>Yes</td><td>none needed</td></tr>
+      <tr><td>HTTP callback returns 5xx / times out</td><td>axios retries 3×, then job marked <code>failed</code>, message deleted</td><td>Callback target must itself be idempotent (we send <code>x-idempotency-key: jobId</code>)</td><td>re-schedule with same <code>jobId</code></td></tr>
+      <tr><td>Mongo/Redis/network blip during consume</td><td>error re-thrown → consumer retries 3×, then leaves message → SQS redelivers → DLQ</td><td>Yes</td><td>redrive DLQ after infra recovers</td></tr>
+      <tr><td>Cron run overlaps the next tick</td><td>same <code>scheduled</code> rows can be read twice → possible double enqueue → possible double callback</td><td>Only if the callback target is idempotent</td><td>ensure a single cron owner; add an overlap guard (§14)</td></tr>
+      <tr><td>Enqueue to SQS fails inside the cron</td><td>logged per job via <code>Promise.allSettled</code>; job stays <code>inProgress</code> and is <b>not</b> retried by the cron next tick (status is no longer <code>scheduled</code>)</td><td>No auto-recovery</td><td>re-schedule with same <code>jobId</code></td></tr>
+      <tr><td>Redis lock not acquired on schedule</td><td>409 <code>LOCK_NOT_ACQUIRED</code> to the caller</td><td>Yes</td><td>caller retries shortly</td></tr>
+      <tr><td>Cancel after a job is already enqueued</td><td>status set to <code>cancelled</code> (version unchanged); when the message arrives the status guard skips it</td><td>Yes</td><td>none needed</td></tr>
+    </table>
+    </div>
+  </section>
+
+  <!-- 13 -->
+  <section class="card" id="gotchas">
+    <h2><span class="num">13</span> Gotchas / why / tribal knowledge</h2>
+
+    <div class="pair"><div class="t">The version number is the whole dedup trick</div>
+      <div class="whywhat"><div class="why"><b>WHY:</b> every schedule/re-schedule does <code>$inc: {version:1}</code>. The SQS message carries the version at enqueue time. <code>handleJob</code> compares it to the job's current version and drops the message if they differ.</div><div class="breaks"><b>WHAT BREAKS:</b> stop bumping version, or stop checking it, and duplicate/stale messages will fire the callback more than once. This is also why re-scheduling with the same <code>jobId</code> is the safe retry.</div></div>
+    </div>
+
+    <div class="pair"><div class="t">The schedule call sometimes enqueues immediately</div>
+      <div class="whywhat"><div class="why"><b>WHY:</b> the cron scans in 60s windows and records each window's end. A job scheduled with a short delay can land inside a window the cron already finished — the cron will never look there again. So if <code>callbackTime &lt;= latestRun.endTimeStamp</code>, the schedule call marks it <code>inProgress</code> and enqueues it right away.</div><div class="breaks"><b>WHAT BREAKS:</b> remove this and short-delay jobs scheduled just after a cron tick are silently dropped — they are neither in a future window nor picked up again.</div></div>
+    </div>
+
+    <div class="pair"><div class="t">Hard-coded bootstrap date <code>2025-10-07</code></div>
+      <div class="whywhat"><div class="why"><b>WHY:</b> the very first cron run has no "last completed run" to start from, so <code>triggerCallbacks</code> falls back to <code>moment('2025-10-07')</code> as the window start.</div><div class="breaks"><b>WHAT BREAKS:</b> if <code>internal_job_run_details</code> is ever wiped, the next run rescans from 2025-10-07 and could re-pick very old <code>scheduled</code> jobs. Also, any job with a <code>callbackTime</code> before that date would never be picked by a fresh run. It is a magic value — treat it carefully.</div></div>
+    </div>
+
+    <div class="pair"><div class="t"><code>THRESHOLD_SECONDS</code> must equal the cron cadence</div>
+      <div class="whywhat"><div class="why"><b>WHY:</b> the cron runs every minute and looks 60s ahead. The two numbers are one setting split in two files (<code>constants.ts</code> and the cron expression).</div><div class="breaks"><b>WHAT BREAKS:</b> threshold &lt; cadence → gaps where due jobs are missed. Threshold &gt; cadence → the same job's window is scanned by two ticks → double enqueue.</div></div>
+    </div>
+
+    <div class="pair"><div class="t">SQS <code>DelaySeconds</code> has a hard ceiling of 900s (15 min)</div>
+      <div class="whywhat"><div class="why"><b>WHY:</b> today this is safe only because the cron enqueues jobs due within 60s and the immediate-enqueue path only fires for jobs already inside a past window (delay near 0). So the computed delay is always small.</div><div class="breaks"><b>WHAT BREAKS:</b> raise <code>THRESHOLD_SECONDS</code> above 900, or add any path that enqueues a far-future job directly, and SQS rejects it with <code>InvalidParameterValue</code>. The code does not cap the delay.</div></div>
+    </div>
+
+    <div class="pair"><div class="t">Cancel does not lock and does not bump version</div>
+      <div class="whywhat"><div class="why"><b>WHY:</b> cancel just sets status to <code>cancelled</code>. It relies on the consumer's status check to skip the job. Leaving the version unchanged is deliberate — the in-flight message's version still matches, so the status guard is what stops it.</div><div class="breaks"><b>WHAT BREAKS:</b> note that <code>CLAUDE.md</code> claims cancel uses the Redis lock — it does not. A cancel racing with a re-schedule is not serialized, so last-write-wins on status. Usually fine, but know it before you rely on ordering.</div></div>
+    </div>
+
+    <div class="note"><b>updateRunStatus is broad.</b> It marks <i>every</i> <code>inProgress</code> run with <code>endTimeStamp &gt;= startTime</code> as <code>completed</code>, not just the row this tick created. With no overlap guard, two overlapping cron runs can mark each other complete. Combined with the missing indexes, this is the area to harden first if load grows.</div>
+  </section>
+
+  <!-- 14 -->
+  <section class="card" id="debt">
+    <h2><span class="num">14</span> Known bugs &amp; tech debt</h2>
+    <ul class="tight">
+      <li><b>No indexes anywhere.</b> Every query is a full collection scan. Add <code>(status, callbackTime)</code> and a <b>unique</b> <code>jobId</code> on <code>scheduled_internal_job</code>, and <code>(status, createdAt)</code> on <code>internal_job_run_details</code>.</li>
+      <li><b><code>jobId</code> is not unique.</b> Correctness rests on the Redis lock alone. A unique index is the durable guard.</li>
+      <li><b>No cron overlap guard.</b> Plain <code>node-cron</code>, no <code>max_instances</code>, no distributed lock. Overlapping runs can double-enqueue. Add a run lock or an "is a run already in progress" check.</li>
+      <li><b>No cleanup / TTL.</b> Both collections grow forever. <code>internal_job_run_details</code> adds ~1,440 rows/day. Add a TTL or an archival job.</li>
+      <li><b>Hard-coded bootstrap date</b> <code>2025-10-07</code> in <code>triggerCallbacks</code> — a magic value, fragile if run-details is wiped.</li>
+      <li><b><code>source</code> and <code>retryCount</code> are accepted but dropped</b> — not in the schema, never persisted. Either wire them in or remove them from the request type.</li>
+      <li><b>No auth on the endpoints.</b> Anyone who can reach the pod can schedule a POST to any URL (SSRF surface, since there is no URL allow-list).</li>
+      <li><b>Logging key mismatch</b> in <code>handleJob</code>'s version-mismatch log: it sets <code>num_key2: 'current version'</code> but then writes the value under <code>num_key3_value</code>, so the current version is not logged under the right key.</li>
+      <li><b>Enqueue-failure jobs get orphaned.</b> If SQS enqueue fails inside the cron, the job is already marked <code>inProgress</code>, so the next tick (which only looks at <code>scheduled</code>) will not retry it.</li>
+      <li><b>No test suite.</b> <code>npm test</code> is a no-op. All external deps (Mongo, Redis, SQS, HTTP) must be mocked when tests are added.</li>
+    </ul>
+  </section>
+
+  <!-- 15 -->
+  <section class="card" id="testing">
+    <h2><span class="num">15</span> How to test locally</h2>
+    <p class="small">No automated tests exist. To exercise the flow end to end on a laptop, you need MongoDB, Redis, and an SQS-compatible queue (LocalStack works).</p>
+    <div class="seq"># from repo root of the monorepo
+docker-compose -f docker-compose-common.yaml up -d   # mongo, redis, localstack
+
+# in job-scheduler-service, set .env: MONGO_URI, REDIS_HOST/PORT,
+# SQS_JOB_PROCESSOR_URL (LocalStack queue), AWS_* creds, AWS_REGION,
+# SHOULD_RUN_CRONS=true, SHOULD_RUN_CONSUMERS=true
+npm install
+npm run dev
+
+# schedule a job that calls back in 30s
+curl -X POST http://localhost:3000/api/v1/scheduler \
+  -H 'content-type: application/json' \
+  -d '{"jobId":"test-1","url":"https://webhook.site/&lt;id&gt;","payload":{"hello":"world"},"delayInSeconds":30,"source":"manual"}'
+
+# cancel it before it fires
+curl -X POST http://localhost:3000/api/v1/scheduler/cancel \
+  -H 'content-type: application/json' -d '{"jobId":"test-1"}'</div>
+    <ul class="tight">
+      <li>Use a <a>webhook.site</a> URL (or a tiny local server) as the callback target so you can watch the POST arrive with the <code>x-idempotency-key</code> header.</li>
+      <li>Watch the job row move <code>scheduled → inProgress → success</code> in Mongo, and a new <code>internal_job_run_details</code> row appear each minute.</li>
+      <li>To test the version guard: schedule <code>test-1</code>, then immediately re-schedule <code>test-1</code> — only the second callback should fire.</li>
+    </ul>
+    <div class="todohuman"><b>TODO (human):</b> confirm the LocalStack SQS setup used by the team (queue name, whether a DLQ is wired locally) and add a first Jest test that mocks Mongo/Redis/SQS.</div>
+  </section>
+
+  <!-- 16 -->
+  <section class="card" id="contacts">
+    <h2><span class="num">16</span> Ownership &amp; contacts</h2>
+    <div class="todohuman"><b>TODO (human):</b> outgoing engineer and next code owner for job-scheduler-service.</div>
+    <div class="todohuman"><b>TODO (human):</b> which caller services depend on it (upstream) and their owners, so a breaking change can be coordinated.</div>
+    <div class="todohuman"><b>TODO (human):</b> AWS account owner / on-call for the SQS queue + DLQ, and the Slack channel to page when jobs pile up.</div>
+  </section>
+
+  <!-- A1 -->
+  <section class="card appendix" id="a1">
+    <h2><span class="num">A1</span> Appendix — SQS &amp; DLQ specifics</h2>
+    <ul class="tight">
+      <li><b>Message body:</b> just <code>{jobId, version}</code> as JSON. The url and payload are read from Mongo at consume time, not carried on the message — so a re-schedule between enqueue and consume is always respected.</li>
+      <li><b>DelaySeconds:</b> computed as <code>callbackTime - now</code> (floored at 0). SQS's max is 900s; the design keeps it well under that (§13).</li>
+      <li><b>Consumer:</b> <code>sqs-consumer</code>, <code>batchSize: 10</code>, <code>handleMessageBatch</code>. Messages are deleted manually via <code>DeleteMessageCommand</code>; the handler returns <code>undefined</code> so the library does not auto-delete.</li>
+      <li><b>Retry split:</b> infrastructure errors → <code>retryWithBackoff</code> 3× (500ms base, ×2 growth, 2s cap, up to 150ms jitter) then left for redelivery. HTTP/app errors → deleted immediately, job marked <code>failed</code>.</li>
+      <li><b>DLQ:</b> handled by the SQS redrive policy (set in AWS, not code). A left-behind message is redelivered until <code>maxReceiveCount</code> is hit, then moved to the DLQ.</li>
+      <li><b>Credentials + region:</b> <code>sqsClient.ts</code> reads <code>AWS_ACCESS_KEY_ID</code>/<code>AWS_SECRET_ACCESS_KEY</code> and <code>AWS_REGION</code> (default <code>eu-west-2</code>).</li>
+    </ul>
+    <div class="todohuman"><b>TODO (human):</b> confirm in AWS the queue's visibility timeout (should exceed the consumer's worst-case processing + retry time), the redrive <code>maxReceiveCount</code>, and the DLQ alarm.</div>
+  </section>
+
+  <footer class="doc">KT — job-scheduler-service · timing = SQS DelaySeconds · cron is the safety net · version = the dedup guard</footer>
+
+</div>
+</body>
+</html>
