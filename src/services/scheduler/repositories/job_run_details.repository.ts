@@ -1,3 +1,4 @@
+import { PRIMARY_PREFERRED_READ } from '../constants';
 import { JobSchedulerRunDetailsModel } from '../models/job_scheduler_run_details.model';
 import {
   JobSchedulerRunDetails,
@@ -10,11 +11,15 @@ const getLastRunByStatus = async (
 ): Promise<JobSchedulerRunDetails | null> => {
   return JobSchedulerRunDetailsModel.findOne({
     status,
-  }).sort({ createdAt: -1 });
+  })
+    .sort({ createdAt: -1 })
+    .read(PRIMARY_PREFERRED_READ);
 };
 
 const getLastRunDetails = async (): Promise<JobSchedulerRunDetails | null> => {
-  return JobSchedulerRunDetailsModel.findOne({}).sort({ createdAt: -1 });
+  return JobSchedulerRunDetailsModel.findOne({})
+    .sort({ createdAt: -1 })
+    .read(PRIMARY_PREFERRED_READ);
 };
 
 const createRunDetails = async (
