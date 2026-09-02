@@ -1,15 +1,12 @@
-import { isEmpty } from 'lodash';
 import moment, { Moment } from 'moment';
 import { LockUtils } from '../../../common/lock_utils';
 import { retryWithBackoff } from '../../../common/retry_utils';
-import { enqueueJob } from '../../../sqs/producers/job_processor';
 import {
   LOCK_TTL_IN_SECONDS,
   SCHEDULE_JOB_BASE_DELAY_MS,
   SCHEDULE_JOB_MAX_JITTER_MS,
   SCHEDULE_JOB_MAX_RETRIES,
 } from '../constants';
-import { JobNotFoundError } from '../errors/job_not_found_error';
 import { JobRepository } from '../repositories/job.repository';
 import { JobSchedulerRunDetailsRepository } from '../repositories/job_run_details.repository';
 import {
@@ -18,18 +15,7 @@ import {
   ScheduleJobRequest,
   ScheduleJobResponse,
 } from '../types';
-
-const enqueueJobWithDelay = async (
-  jobId: string,
-  version: number,
-  callbackTime: Date,
-): Promise<void> => {
-  const delaySeconds =
-    moment(callbackTime).diff(moment(), 'seconds') > 0
-      ? moment(callbackTime).diff(moment(), 'seconds')
-      : 0;
-  await enqueueJob({ jobId, version }, delaySeconds);
-};
+import { claimAndEnqueueJob } from './job_dispatch';
 
 const scheduleJob = async (
   request: ScheduleJobRequest,
@@ -38,7 +24,7 @@ const scheduleJob = async (
     latestRun: JobSchedulerRunDetails | null,
     callbackTimeStamp: Moment,
   ): boolean => {
-    if (isEmpty(latestRun)) {
+    if (!latestRun) {
       return false;
     }
     const { endTimeStamp } = latestRun;
@@ -60,17 +46,8 @@ const scheduleJob = async (
         });
         const latestRun =
           await JobSchedulerRunDetailsRepository.getLastRunDetails();
-        const { callbackTime } = createdJob;
         if (isJobInBetweenRunningJob(latestRun, callbackTimeStamp)) {
-          const updatedJob = await JobRepository.updateJobStatus(
-            jobId,
-            JobStatus.IN_PROGRESS,
-          );
-          if (isEmpty(updatedJob)) {
-            throw new JobNotFoundError(jobId);
-          }
-          const { version } = updatedJob;
-          await enqueueJobWithDelay(jobId, version, callbackTime);
+          await claimAndEnqueueJob(createdJob);
         }
         return createdJob;
       },
