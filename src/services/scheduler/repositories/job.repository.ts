@@ -1,4 +1,5 @@
 import { isEmpty } from 'lodash';
+import { PRIMARY_PREFERRED_READ } from '../constants';
 import { JobModel } from '../models/job.model';
 import { Job, JobDocument, JobStatus } from '../types';
 
@@ -35,7 +36,7 @@ const createOrUpdateJob = async (job: {
 };
 
 const findJobById = async (jobId: string): Promise<JobDocument | undefined> => {
-  const job = await JobModel.findOne({ jobId });
+  const job = await JobModel.findOne({ jobId }).read(PRIMARY_PREFERRED_READ);
   if (isEmpty(job)) {
     return undefined;
   }
@@ -49,8 +50,22 @@ const updateJobStatus = async (
   return JobModel.findOneAndUpdate({ jobId }, { $set: { status } });
 };
 
-const updateJobBulk = async (jobIds: string[], status: JobStatus) => {
-  return JobModel.updateMany({ jobId: { $in: jobIds } }, { $set: { status } });
+const claimScheduledJob = async (
+  jobId: string,
+): Promise<JobDocument | null> => {
+  const job = await JobModel.findOneAndUpdate(
+    { jobId, status: JobStatus.SCHEDULED },
+    { $set: { status: JobStatus.IN_PROGRESS } },
+    { new: true },
+  );
+  return job ? buildJobDocument(job) : null;
+};
+
+const revertJobToScheduled = async (jobId: string): Promise<void> => {
+  await JobModel.updateOne(
+    { jobId, status: JobStatus.IN_PROGRESS },
+    { $set: { status: JobStatus.SCHEDULED } },
+  );
 };
 
 const getScheduledJobBetweenTimeRange = async (
@@ -60,7 +75,21 @@ const getScheduledJobBetweenTimeRange = async (
   const jobs = await JobModel.find({
     callbackTime: { $gt: startTime, $lte: endTime },
     status: JobStatus.SCHEDULED,
-  });
+  }).read(PRIMARY_PREFERRED_READ);
+  if (isEmpty(jobs)) {
+    return [];
+  }
+  return jobs.map((job) => buildJobDocument(job));
+};
+
+const getStaleScheduledJobs = async (
+  from: Date,
+  to: Date,
+): Promise<JobDocument[]> => {
+  const jobs = await JobModel.find({
+    callbackTime: { $gte: from, $lte: to },
+    status: JobStatus.SCHEDULED,
+  }).read(PRIMARY_PREFERRED_READ);
   if (isEmpty(jobs)) {
     return [];
   }
@@ -71,6 +100,8 @@ export const JobRepository = {
   createOrUpdateJob,
   findJobById,
   updateJobStatus,
+  claimScheduledJob,
+  revertJobToScheduled,
   getScheduledJobBetweenTimeRange,
-  updateJobBulk,
+  getStaleScheduledJobs,
 };
