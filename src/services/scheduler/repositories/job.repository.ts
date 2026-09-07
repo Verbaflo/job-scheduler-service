@@ -1,5 +1,5 @@
 import { isEmpty } from 'lodash';
-import { PRIMARY_PREFERRED_READ } from '../constants';
+import { PRIMARY_PREFERRED_READ, RECONCILE_BATCH_LIMIT } from '../constants';
 import { JobModel } from '../models/job.model';
 import { Job, JobDocument, JobStatus } from '../types';
 
@@ -89,7 +89,9 @@ const getStaleScheduledJobs = async (
   const jobs = await JobModel.find({
     callbackTime: { $gte: from, $lte: to },
     status: JobStatus.SCHEDULED,
-  }).read(PRIMARY_PREFERRED_READ);
+  })
+    .read(PRIMARY_PREFERRED_READ)
+    .limit(RECONCILE_BATCH_LIMIT);
   if (isEmpty(jobs)) {
     return [];
   }
