@@ -24,16 +24,20 @@ const initializeTracing = async () => {
       process.env.JAEGER_SERVICE_VERSION ||
       process.env.npm_package_version ||
       '1.0.0';
+    const OTEL_ENVIRONMENT = process.env.OTEL_ENVIRONMENT || 'local';
     Logger.info({
       message: `[OTEL] Initializing tracing with endpoint: ${JAEGER_ENDPOINT}`,
     });
     const exporter = new OTLPTraceExporter({
       url: JAEGER_ENDPOINT,
     });
+    // Cap the SDK's default batch processor so each OTLP request stays under CubeAPM's request byte limit.
+    if (!process.env.OTEL_BSP_MAX_EXPORT_BATCH_SIZE) process.env.OTEL_BSP_MAX_EXPORT_BATCH_SIZE = '256';
     sdk = new NodeSDK({
       resource: new Resource({
         'service.name': SERVICE_NAME,
         'service.version': SERVICE_VERSION,
+        'cube.environment': OTEL_ENVIRONMENT,
       }),
       traceExporter: exporter,
       instrumentations: [
