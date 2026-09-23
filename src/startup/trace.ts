@@ -3,7 +3,6 @@ import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { Resource } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
-import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { Logger } from '../common/logger';
 
 let sdk: NodeSDK | null = null;
@@ -26,26 +25,21 @@ const initializeTracing = async () => {
       process.env.npm_package_version ||
       '1.0.0';
     const OTEL_ENVIRONMENT = process.env.OTEL_ENVIRONMENT || 'local';
-    const OTEL_MAX_EXPORT_BATCH_SIZE =
-      Number(process.env.OTEL_MAX_EXPORT_BATCH_SIZE) || 256;
     Logger.info({
       message: `[OTEL] Initializing tracing with endpoint: ${JAEGER_ENDPOINT}`,
     });
     const exporter = new OTLPTraceExporter({
       url: JAEGER_ENDPOINT,
     });
-    // Cap the batch by span count so each OTLP request stays under CubeAPM's request byte limit.
+    // Cap the SDK's default batch processor so each OTLP request stays under CubeAPM's request byte limit.
+    if (!process.env.OTEL_BSP_MAX_EXPORT_BATCH_SIZE) process.env.OTEL_BSP_MAX_EXPORT_BATCH_SIZE = '256';
     sdk = new NodeSDK({
       resource: new Resource({
         'service.name': SERVICE_NAME,
         'service.version': SERVICE_VERSION,
         'cube.environment': OTEL_ENVIRONMENT,
       }),
-      spanProcessors: [
-        new BatchSpanProcessor(exporter, {
-          maxExportBatchSize: OTEL_MAX_EXPORT_BATCH_SIZE,
-        }),
-      ],
+      traceExporter: exporter,
       instrumentations: [
         new ExpressInstrumentation(),
         new HttpInstrumentation(),
