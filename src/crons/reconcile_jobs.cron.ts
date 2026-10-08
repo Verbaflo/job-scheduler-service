@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import { Logger } from '../common/logger';
-import { runTracedCron } from '../common/traced_cron';
+import { runMonitoredCron } from '../common/cron_monitoring';
 import { RequestContext } from '../middlewares/request_context';
 import { RECONCILE_CRON_SCHEDULE } from '../services/scheduler/constants';
 import { SchedulerService } from '../services/scheduler/service';
@@ -18,7 +18,7 @@ const startReconcileJobsCron = () => {
         key1_value: startedAt,
       });
       try {
-        await runTracedCron(
+        await runMonitoredCron(
           RECONCILE_JOBS_CRON_NAME,
           () => SchedulerService.reconcileStaleJobs(),
           { requestId },

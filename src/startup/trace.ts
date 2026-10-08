@@ -5,8 +5,10 @@ import { Resource } from '@opentelemetry/resources';
 import { NodeSDK, tracing } from '@opentelemetry/sdk-node';
 import { Logger } from '../common/logger';
 import { ByteLimitedSpanExporter } from './byte_limited_exporter';
+import { buildMetricReaderFromEnv } from './metrics_export';
 
 let sdk: NodeSDK | null = null;
+let metricReader: ReturnType<typeof buildMetricReaderFromEnv>;
 
 const initializeTracing = async () => {
   try {
@@ -32,6 +34,7 @@ const initializeTracing = async () => {
     const exporter = new OTLPTraceExporter({
       url: JAEGER_ENDPOINT,
     });
+    metricReader = buildMetricReaderFromEnv();
     const byteLimitedExporter = new ByteLimitedSpanExporter(exporter, {
       onSpanTrimmed: (spanName, originalSpanBytes) =>
         Logger.warning({
@@ -53,6 +56,7 @@ const initializeTracing = async () => {
         'cube.environment': OTEL_ENVIRONMENT,
       }),
       spanProcessors: [new tracing.BatchSpanProcessor(byteLimitedExporter)],
+      metricReader,
       instrumentations: [
         new ExpressInstrumentation(),
         new HttpInstrumentation(),
@@ -74,6 +78,7 @@ const initializeTracing = async () => {
 const shutdownTracing = async () => {
   if (!sdk) return;
   try {
+    await metricReader?.forceFlush();
     await sdk.shutdown();
     Logger.info({ message: '[OTEL] Tracing shutdown complete' });
   } catch (err: any) {
