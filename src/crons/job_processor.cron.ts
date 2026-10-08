@@ -1,7 +1,10 @@
 import cron from 'node-cron';
 import { Logger } from '../common/logger';
+import { runMonitoredCron } from '../common/cron_monitoring';
 import { RequestContext } from '../middlewares/request_context';
 import { SchedulerService } from '../services/scheduler/service';
+
+const JOB_PROCESSOR_CRON_NAME = 'job_processor';
 
 const startJobProcessorCron = () => {
   cron.schedule('*/1 * * * *', async () => {
@@ -14,7 +17,11 @@ const startJobProcessorCron = () => {
         key1_value: startedAt,
       });
       try {
-        await SchedulerService.triggerCallbacks();
+        await runMonitoredCron(
+          JOB_PROCESSOR_CRON_NAME,
+          () => SchedulerService.triggerCallbacks(),
+          { requestId },
+        );
       } catch (err: any) {
         Logger.error({
           message: 'jobProcessorCron failed',

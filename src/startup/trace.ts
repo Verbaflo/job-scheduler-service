@@ -2,10 +2,13 @@ import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { Resource } from '@opentelemetry/resources';
-import { NodeSDK } from '@opentelemetry/sdk-node';
+import { NodeSDK, tracing } from '@opentelemetry/sdk-node';
 import { Logger } from '../common/logger';
+import { ByteLimitedSpanExporter } from './byte_limited_exporter';
+import { buildMetricReaderFromEnv } from './metrics_export';
 
 let sdk: NodeSDK | null = null;
+let metricReader: ReturnType<typeof buildMetricReaderFromEnv>;
 
 const initializeTracing = async () => {
   try {
@@ -31,15 +34,29 @@ const initializeTracing = async () => {
     const exporter = new OTLPTraceExporter({
       url: JAEGER_ENDPOINT,
     });
+    metricReader = buildMetricReaderFromEnv();
+    const byteLimitedExporter = new ByteLimitedSpanExporter(exporter, {
+      onSpanTrimmed: (spanName, originalSpanBytes) =>
+        Logger.warning({
+          message:
+            '[OTEL] Trimmed span attributes to fit the per-span byte cap',
+          key1: 'span_name',
+          key1_value: spanName,
+          num_key1: 'original_span_bytes',
+          num_key1_value: originalSpanBytes,
+        }),
+    });
     // Cap the SDK's default batch processor so each OTLP request stays under CubeAPM's request byte limit.
-    if (!process.env.OTEL_BSP_MAX_EXPORT_BATCH_SIZE) process.env.OTEL_BSP_MAX_EXPORT_BATCH_SIZE = '256';
+    if (!process.env.OTEL_BSP_MAX_EXPORT_BATCH_SIZE)
+      process.env.OTEL_BSP_MAX_EXPORT_BATCH_SIZE = '256';
     sdk = new NodeSDK({
       resource: new Resource({
         'service.name': SERVICE_NAME,
         'service.version': SERVICE_VERSION,
         'cube.environment': OTEL_ENVIRONMENT,
       }),
-      traceExporter: exporter,
+      spanProcessors: [new tracing.BatchSpanProcessor(byteLimitedExporter)],
+      metricReader,
       instrumentations: [
         new ExpressInstrumentation(),
         new HttpInstrumentation(),
@@ -61,6 +78,7 @@ const initializeTracing = async () => {
 const shutdownTracing = async () => {
   if (!sdk) return;
   try {
+    await metricReader?.forceFlush();
     await sdk.shutdown();
     Logger.info({ message: '[OTEL] Tracing shutdown complete' });
   } catch (err: any) {
